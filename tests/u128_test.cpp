@@ -1,0 +1,372 @@
+#include <cassert>
+#include <random>
+#include <iostream>
+#include "../u128.hpp"
+
+using namespace bignum::u128;
+
+namespace
+{
+    auto const seed = std::random_device{}();
+
+    /***
+     * Генератор случайных чисел.
+     */
+    auto roll_ulow = [urbg = std::mt19937{seed},
+                      distr = std::uniform_int_distribution<ULOW>{}](uint64_t max_value) mutable -> ULOW
+    {
+        return max_value != -1ull ? distr(urbg) % (max_value + 1ull) : distr(urbg);
+    };
+}
+
+namespace tests
+{
+    void debug_test()
+    {
+        ;
+    }
+
+    void string_value_test()
+    {
+        {
+            U128 x{1ull, 1ull};
+            const auto &x_str = x.value();
+            assert(x_str == "18446744073709551617");
+        }
+        {
+            U128 x{1ull, 0ull};
+            const auto &x_str = x.value();
+            assert(x_str == "1");
+        }
+        {
+            U128 x{0};
+            const auto &x_str = x.value();
+            assert(x_str == "0");
+        }
+        {
+            U128 x{123ull, 321ull};
+            const auto &x_str = x.value();
+            assert(x_str == "5921404847660766068859");
+        }
+    }
+
+    void cmp_operator_test()
+    {
+        {
+            U128 x{1, 1};
+            U128 y{1, 1};
+            assert(x == y);
+        }
+        {
+            U128 x{0, 1};
+            U128 y{1, 1};
+            assert(x != y);
+        }
+        {
+            U128 x{1, 0};
+            U128 y{1, 1};
+            assert(x != y);
+        }
+        {
+            U128 x{2, 2};
+            U128 y{1, 1};
+            assert(x != y);
+        }
+    }
+
+    void shift_right_operator_test()
+    {
+        {
+            U128 x{0};
+            U128 y = x >> 1;
+            assert(y == U128{0});
+        }
+        {
+            U128 x{2};
+            U128 y = x >> 1;
+            assert(y == U128{1});
+        }
+        {
+            U128 x{1};
+            U128 y = x >> 1;
+            assert(y == U128{0});
+        }
+        {
+            U128 x{1, 1};
+            U128 y = x >> 1;
+            assert(y == U128{1ull << 63});
+        }
+        {
+            U128 x{1, 1};
+            U128 y = x >> 127;
+            assert(y == U128{0});
+        }
+        {
+            U128 x{1, 1};
+            U128 y = x >> 128;
+            assert(y == U128{0});
+        }
+    }
+
+    void shift_left_operator_test()
+    {
+        {
+            U128 x{0};
+            U128 y = x << 1;
+            assert(y == U128{0});
+        }
+        {
+            U128 x{1};
+            U128 y = x << 1;
+            assert(y == U128{2});
+        }
+        {
+            U128 x{1, 1};
+            U128 y = x << 1;
+            assert((y == U128{2, 2}));
+        }
+        {
+            U128 x{1};
+            U128 y = x << 127;
+            assert((y == U128{0, 1ull << 63}));
+        }
+        {
+            U128 x{1, 1};
+            U128 y = x << 128;
+            assert(y == U128{0});
+        }
+    }
+
+    void and_operator_test()
+    {
+        U128 x{1, 1};
+        U128 y{0, 1};
+        U128 z = x & y;
+        assert((z == U128{0, 1}));
+    }
+
+    void or_operator_test()
+    {
+        U128 x{0, 1};
+        U128 y{1, 1};
+        U128 z = x | y;
+        assert((z == U128{1, 1}));
+    }
+
+    void xor_operator_test()
+    {
+        U128 x{1, 1};
+        U128 y{1, 1};
+        U128 z = x ^ y;
+        assert(z == U128{0});
+    }
+
+    void addition_test()
+    {
+        {
+            U128 x{1, 1};
+            U128 y{2, 2};
+            U128 z = x + y;
+            assert((z == U128{3, 3}));
+        }
+        {
+            U128 x{1ull << 63};
+            U128 y{1ull << 63};
+            U128 z = x + y;
+            assert((z == U128{0, 1}));
+        }
+    }
+
+    void subtraction_test()
+    {
+        {
+            U128 x{2, 2};
+            U128 y{1, 1};
+            U128 z = x - y;
+            assert((z == U128{1, 1}));
+        }
+        {
+            U128 x{0};
+            U128 y{1};
+            U128 z = x - y;
+            assert((z == U128::get_max_value()));
+        }
+    }
+
+    void multiplication_test()
+    {
+        {
+            U128 x{1, 2};                    // 36893488147419103233
+            U128 y{2, 1};                    // 18446744073709551618
+            U128 z = x * y;                  // 680564733841876927018982935232084180994 mod 2^128 = 92233720368547758082
+            assert((z == U128{2ull, 5ull})); // 92233720368547758082 = 2 + 5 * 2^64
+        }
+    }
+
+    int division_test()
+    {
+        int num_of_runned_tests = 0;
+        // Половинчатое деление.
+        {
+            num_of_runned_tests++;
+            U128 x{8};
+            ULOW y{2};
+            auto [q, r] = x / y;
+            assert(q == U128{4ull});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{4536ull, 443ull};
+            ULOW y{132668453ull};
+            auto [q, r] = x / y;
+            assert(q == U128{61596464267608ull});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{5ull, 7ull};
+            ULOW y{1ull};
+            auto [q, r] = x / y;
+            assert(q == x);
+            assert(r == U128{0});
+        }
+        // Деление.
+        {
+            num_of_runned_tests++;
+            U128 x{0};
+            U128 y{4};
+            auto [q, r] = x / y;
+            assert(q == U128{0});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{1};
+            U128 y{1};
+            auto [q, r] = x / y;
+            assert(q == U128{1ull});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{8};
+            U128 y{2};
+            auto [q, r] = x / y;
+            assert(q == U128{4ull});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{3};
+            U128 y{5};
+            auto [q, r] = x / y;
+            assert(q == U128{0});
+            assert(r == U128{3ull});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{2, 2};
+            U128 y{2};
+            auto [q, r] = x / y;
+            assert((q == U128{1ull, 1ull}));
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{4536ull, 443ull};
+            U128 y{132668453ull};
+            auto [q, r] = x / y;
+            assert(q == U128{61596464267608ull});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{4536ull, 443ull};
+            U128 y{5ull, 3ull};
+            auto [q, r] = x / y;
+            assert(q == U128{147ull});
+            assert((r == U128{3801ull, 2ull}));
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{4536ull, 443ull};
+            U128 y{5ull, 1ull};
+            auto [q, r] = x / y;
+            assert(q == U128{443ull});
+            assert(r == U128{2321ull});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{0, 1ull};
+            U128 y{2ull};
+            auto [q, r] = x / y;
+            assert(q == U128{1ull << 63});
+            assert(r == U128{0});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{0, 1ull};
+            U128 y{13ull};
+            auto [q, r] = x / y;
+            assert(q == U128{1418980313362273201ull});
+            assert(r == U128{3ull});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{112ull, 1ull};
+            U128 y{13ull};
+            auto [q, r] = x / y;
+            assert(q == U128{1418980313362273209ull});
+            assert(r == U128{11ull});
+        }
+        {
+            num_of_runned_tests++;
+            U128 x{2ull, 3ull};
+            U128 y{3ull, 1ull};
+            auto [q, r] = x / y;
+            assert(q == U128{2ull});
+            assert(r == U128{18446744073709551612ull});
+        }
+        return num_of_runned_tests;
+    }
+
+    void random_infinite_test(uint64_t max_value)
+    {
+        std::cout << "Run infinite random test...\n";
+        uint64_t counter = 0;
+        for (;;)
+        {
+            counter++;
+            const U128 x{roll_ulow(max_value), roll_ulow(max_value)};
+            const U128 y{roll_ulow(max_value), roll_ulow(max_value)};
+            if (y == U128{0})
+                continue;
+            const auto &[q, r] = x / y;
+            const auto &x_restored = q * y + r;
+            const bool is_rem_ok = r < y;
+            const bool equality = x_restored == x;
+            if (!is_rem_ok || !equality)
+            {
+                std::cout << "x: " << x.value() << std::endl;
+                std::cout << "y: " << y.value() << std::endl;
+            }
+            if ((counter % (1024ull * 65536ull)) == 0)
+            {
+                std::cout << "ok: counter: " << counter << "; ";
+                #ifdef USE_DIV_COUNTERS
+                std::cout << " num. of loops per divisions: full div: ave: " << g_average_loops_when_div << 
+                            ", min: " << g_min_loops_when_div << 
+                            ", max: " << g_max_loops_when_div << 
+                            ", half div: ave: " << g_average_loops_when_half_div <<
+                            ", min: " << g_min_loops_when_half_div << 
+                            ", max: " << g_max_loops_when_half_div << "; ";
+                #endif
+                std::cout << std::endl << std::flush;
+            }
+            assert(is_rem_ok);
+            assert(equality);
+        }
+        std::cout << "Random test stopped.\n";
+    }
+}
