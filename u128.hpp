@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>   // uint64_t
+#include <string>    // std::string
 #include <utility>   // std::exchange
 #include <algorithm> // std::min, std::max
 #include <tuple>     // std::pair, std::tie
@@ -18,19 +19,19 @@
 
 namespace bignum::u128
 {
-    #ifdef USE_DIV_COUNTERS
-        inline double g_min_loops_when_div = 1./0.;
-        inline double g_max_loops_when_div = 0;
-        inline double g_average_loops_when_div = 0;
+#ifdef USE_DIV_COUNTERS
+    inline double g_min_loops_when_div = 1. / 0.;
+    inline double g_max_loops_when_div = 0;
+    inline double g_average_loops_when_div = 0;
 
-        inline double g_all_divs = 0;
+    inline double g_all_divs = 0;
 
-        inline double g_min_loops_when_half_div = 1./0.;
-        inline double g_max_loops_when_half_div = 0;
-        inline double g_average_loops_when_half_div = 0;
+    inline double g_min_loops_when_half_div = 1. / 0.;
+    inline double g_max_loops_when_half_div = 0;
+    inline double g_average_loops_when_half_div = 0;
 
-        inline double g_all_half_divs = 0;
-    #endif
+    inline double g_all_half_divs = 0;
+#endif
 
     /**
      * @brief Тип половинки числа.
@@ -371,15 +372,15 @@ namespace bignum::u128
             ULOW N = R * (MAX_ULOW / Y) + (X.mLow / Y);
             U128 result{N, Q};
             U128 E = X - result * Y; // Остаток от деления.
-            #ifdef USE_DIV_COUNTERS
-                g_all_half_divs++;
-                double loops = 0;
-            #endif
+#ifdef USE_DIV_COUNTERS
+            g_all_half_divs++;
+            double loops = 0;
+#endif
             for (;;)
             {
-                #ifdef USE_DIV_COUNTERS
-                    loops++;
-                #endif
+#ifdef USE_DIV_COUNTERS
+                loops++;
+#endif
                 Q = E.mHigh / Y;
                 R = E.mHigh % Y;
                 N = R * (MAX_ULOW / Y) + (E.mLow / Y);
@@ -389,11 +390,11 @@ namespace bignum::u128
                 result += tmp;
                 E -= tmp * Y;
             }
-            #ifdef USE_DIV_COUNTERS
-                g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
-                g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
-                g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
-            #endif
+#ifdef USE_DIV_COUNTERS
+            g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
+            g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
+            g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
+#endif
             return std::make_pair(result, E);
         }
 
@@ -430,17 +431,17 @@ namespace bignum::u128
             const U128 &DeltaQ = mult64(Delta, Q);
             U128 W1{U128{0, R} - U128{0, Q}};
             W1 += DeltaQ;
-            #ifdef USE_DIV_COUNTERS
-                g_all_divs++;
-                double loops = 0;
-            #endif
+#ifdef USE_DIV_COUNTERS
+            g_all_divs++;
+            double loops = 0;
+#endif
             // ******* Unsigned hack. Это только для беззнаковых чисел.
             // Для учета случаев, когда W1 отрицательное, если бы был знак.
             for (; W1 >= Y;)
             {
-                #ifdef USE_DIV_COUNTERS
-                    loops++;
-                #endif
+#ifdef USE_DIV_COUNTERS
+                loops++;
+#endif
                 W1 += Y;
             }
             // ******* Unsigned hack.
@@ -453,17 +454,17 @@ namespace bignum::u128
             U128 Error{X - N};
             while (Error >= Y)
             {
-                #ifdef USE_DIV_COUNTERS
-                    loops++;
-                #endif
+#ifdef USE_DIV_COUNTERS
+                loops++;
+#endif
                 result.dec();
                 Error += Y;
             }
-            #ifdef USE_DIV_COUNTERS
-                g_average_loops_when_div += (loops - g_average_loops_when_div) / g_all_divs;
-                g_max_loops_when_div = std::max(g_max_loops_when_div, loops);
-                g_min_loops_when_div = std::min(g_min_loops_when_div, loops);
-            #endif
+#ifdef USE_DIV_COUNTERS
+            g_average_loops_when_div += (loops - g_average_loops_when_div) / g_all_divs;
+            g_max_loops_when_div = std::max(g_max_loops_when_div, loops);
+            g_min_loops_when_div = std::min(g_min_loops_when_div, loops);
+#endif
             return std::make_pair(result, Error);
         }
 
@@ -530,8 +531,8 @@ namespace bignum::u128
             ULOW N = R * (MAX_ULOW / TEN) + (X.mLow / TEN);
             U128 result{N, Q};
             const U128 &tmp = result * TEN;
-            U128 E {X - tmp};
-            while (E.mHigh != 0 || E.mLow >= ULOW(10))
+            U128 E{X - tmp};
+            while (E.mHigh != 0 || E.mLow >= TEN)
             {
                 Q = E.mHigh / TEN;
                 R = E.mHigh % TEN;
