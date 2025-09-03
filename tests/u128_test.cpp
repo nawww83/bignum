@@ -19,7 +19,7 @@ namespace
     };
 }
 
-namespace tests
+namespace tests_u128
 {
     void debug_test()
     {
