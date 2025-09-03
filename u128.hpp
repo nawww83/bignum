@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>   // uint64_t
+#include <cassert>   // assert 
 #include <string>    // std::string
 #include <utility>   // std::exchange
 #include <algorithm> // std::min, std::max
