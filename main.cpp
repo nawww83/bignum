@@ -38,8 +38,18 @@ int main()
 
         {
             // Наибольшее значение половинок тестируемых чисел.
-            // const uint64_t max_high_low_value = 128;
-            // random_infinite_test(max_high_low_value);
+            const uint64_t max_high_low_value = 16;
+            // Количество выводов счетчиков на экран.
+            const int num_of_debug_prints = 8;
+            random_half_division_test(max_high_low_value, num_of_debug_prints);
+        }
+
+        {
+            // Наибольшее значение половинок тестируемых чисел.
+            const uint64_t max_high_low_value = 16;
+            // Количество выводов счетчиков на экран.
+            const int num_of_debug_prints = 8;
+            random_full_division_test(max_high_low_value, num_of_debug_prints);
         }
     }
 
@@ -53,7 +63,8 @@ int main()
         cmp_operator_test();
     }
 
-    std::cout << "All Ok!\n";
+    std::cout << "All Ok! Exit... (don't forget flush...)\n";
+    std::cout << std::flush;
 
     return 0;
 }

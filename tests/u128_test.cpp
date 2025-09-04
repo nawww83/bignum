@@ -331,10 +331,68 @@ namespace tests_u128
         return num_of_runned_tests;
     }
 
-    void random_infinite_test(uint64_t max_value)
+    void random_half_division_test(uint64_t max_value, int num_of_debug_prints)
     {
-        std::cout << "Run infinite random test...\n";
+        #ifdef USE_DIV_COUNTERS
+            g_all_half_divs = 0;
+            g_average_loops_when_half_div = 0;
+            g_max_loops_when_half_div = 0;
+            g_min_loops_when_half_div = 0;
+        #endif
+        std::cout << "Run half division random test...\n";
         uint64_t counter = 0;
+        int debug_counter = 0;
+        for (;;)
+        {
+            counter++;
+            const U128 x{roll_ulow(max_value), roll_ulow(max_value)};
+            const ULOW y{roll_ulow(max_value)};
+            if (y == ULOW{0})
+                continue;
+            const auto &[q, r] = x / y;
+            const auto &x_restored = q * y + r;
+            const bool is_rem_ok = r < U128{y};
+            const bool equality = x_restored == x;
+            if (!is_rem_ok || !equality)
+            {
+                std::cout << "x: " << x.value() << std::endl;
+                std::cout << "y: " << y << std::endl;
+            }
+            if ((counter % (1024ull * 65536ull)) == 0)
+            {
+                debug_counter++;
+                std::cout << "ok: counter: " << counter << "; " << debug_counter << " from: " << num_of_debug_prints << ";";
+                #ifdef USE_DIV_COUNTERS
+                std::cout << " loops per division: ave: " << g_average_loops_when_half_div <<
+                            ", min: " << g_min_loops_when_half_div << 
+                            ", max: " << g_max_loops_when_half_div << ";\n";
+                #endif
+                std::cout << "\tlast x / y = " << x.value() << " / " << y << " = " << q.value() << ", remainder = " << r.value();
+                std::cout << std::endl << std::flush;
+            }
+            assert(is_rem_ok);
+            assert(equality);
+            if (debug_counter >= num_of_debug_prints)
+                break;
+        }
+        std::cout << "Random test stopped.\n";
+    }
+
+    void random_full_division_test(uint64_t max_value, int num_of_debug_prints)
+    {
+        #ifdef USE_DIV_COUNTERS
+            g_all_half_divs = 0;
+            g_average_loops_when_half_div = 0;
+            g_max_loops_when_half_div = 0;
+            g_min_loops_when_half_div = 0;
+            g_all_divs = 0;
+            g_average_loops_when_div = 0;
+            g_max_loops_when_div = 0;
+            g_min_loops_when_div = 0;
+        #endif
+        std::cout << "Run full division random test...\n";
+        uint64_t counter = 0;
+        int debug_counter = 0;
         for (;;)
         {
             counter++;
@@ -353,19 +411,23 @@ namespace tests_u128
             }
             if ((counter % (1024ull * 65536ull)) == 0)
             {
-                std::cout << "ok: counter: " << counter << "; ";
+                debug_counter++;
+                std::cout << "ok: counter: " << counter << "; " << debug_counter << " from: " << num_of_debug_prints << ";";
                 #ifdef USE_DIV_COUNTERS
-                std::cout << " num. of loops per divisions: full div: ave: " << g_average_loops_when_div << 
+                std::cout << " loops per division: full div: ave: " << g_average_loops_when_div << 
                             ", min: " << g_min_loops_when_div << 
                             ", max: " << g_max_loops_when_div << 
                             ", half div: ave: " << g_average_loops_when_half_div <<
                             ", min: " << g_min_loops_when_half_div << 
-                            ", max: " << g_max_loops_when_half_div << "; ";
+                            ", max: " << g_max_loops_when_half_div << ";\n";
                 #endif
+                std::cout << "\tlast x / y = " << x.value() << " / " << y.value() << " = " << q.value() << ", remainder = " << r.value();
                 std::cout << std::endl << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);
+            if (debug_counter >= num_of_debug_prints)
+                break;
         }
         std::cout << "Random test stopped.\n";
     }

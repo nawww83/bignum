@@ -15,8 +15,8 @@
 /**
  * @brief Использовать счетчики для проверки количества итераций операции деления.
  */
-#undef USE_DIV_COUNTERS
-// #define USE_DIV_COUNTERS
+// #undef USE_DIV_COUNTERS
+#define USE_DIV_COUNTERS
 
 namespace bignum::u128
 {
