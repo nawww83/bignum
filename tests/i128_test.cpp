@@ -92,6 +92,11 @@ namespace tests_i128
             assert(x != y);
         }
         {
+            I128 x{U128{0}, Sign{false}, Singular{true, false}};
+            I128 y{U128{0}};
+            assert(x != y);
+        }
+        {
             I128 x{U128{0}, Sign{false}, Singular{true, true}};
             I128 y{U128{0}};
             assert(x != y);

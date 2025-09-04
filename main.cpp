@@ -38,17 +38,17 @@ int main()
 
         {
             // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 16;
+            const uint64_t max_high_low_value = 32;
             // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 8;
+            const int num_of_debug_prints = 4;
             random_half_division_test(max_high_low_value, num_of_debug_prints);
         }
 
         {
             // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 16;
+            const uint64_t max_high_low_value = 32;
             // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 8;
+            const int num_of_debug_prints = 4;
             random_full_division_test(max_high_low_value, num_of_debug_prints);
         }
     }

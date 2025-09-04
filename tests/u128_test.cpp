@@ -333,12 +333,12 @@ namespace tests_u128
 
     void random_half_division_test(uint64_t max_value, int num_of_debug_prints)
     {
-        #ifdef USE_DIV_COUNTERS
-            g_all_half_divs = 0;
-            g_average_loops_when_half_div = 0;
-            g_max_loops_when_half_div = 0;
-            g_min_loops_when_half_div = 0;
-        #endif
+#ifdef USE_DIV_COUNTERS
+        g_all_half_divs = 0;
+        g_average_loops_when_half_div = 0;
+        g_max_loops_when_half_div = 0;
+        g_min_loops_when_half_div = 0;
+#endif
         std::cout << "Run half division random test...\n";
         uint64_t counter = 0;
         int debug_counter = 0;
@@ -362,13 +362,12 @@ namespace tests_u128
             {
                 debug_counter++;
                 std::cout << "ok: counter: " << counter << "; " << debug_counter << " from: " << num_of_debug_prints << ";";
-                #ifdef USE_DIV_COUNTERS
-                std::cout << " loops per division: ave: " << g_average_loops_when_half_div <<
-                            ", min: " << g_min_loops_when_half_div << 
-                            ", max: " << g_max_loops_when_half_div << ";\n";
-                #endif
-                std::cout << "\tlast x / y = " << x.value() << " / " << y << " = " << q.value() << ", remainder = " << r.value();
-                std::cout << std::endl << std::flush;
+#ifdef USE_DIV_COUNTERS
+                std::cout << " loops per division: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
+#endif
+                std::cout << "\tlast x // y = " << x.value() << " // " << y << " = " << q.value() << ", remainder = " << r.value();
+                std::cout << std::endl
+                          << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);
@@ -380,16 +379,16 @@ namespace tests_u128
 
     void random_full_division_test(uint64_t max_value, int num_of_debug_prints)
     {
-        #ifdef USE_DIV_COUNTERS
-            g_all_half_divs = 0;
-            g_average_loops_when_half_div = 0;
-            g_max_loops_when_half_div = 0;
-            g_min_loops_when_half_div = 0;
-            g_all_divs = 0;
-            g_average_loops_when_div = 0;
-            g_max_loops_when_div = 0;
-            g_min_loops_when_div = 0;
-        #endif
+#ifdef USE_DIV_COUNTERS
+        g_all_half_divs = 0;
+        g_average_loops_when_half_div = 0;
+        g_max_loops_when_half_div = 0;
+        g_min_loops_when_half_div = 0;
+        g_all_divs = 0;
+        g_average_loops_when_div = 0;
+        g_max_loops_when_div = 0;
+        g_min_loops_when_div = 0;
+#endif
         std::cout << "Run full division random test...\n";
         uint64_t counter = 0;
         int debug_counter = 0;
@@ -413,16 +412,12 @@ namespace tests_u128
             {
                 debug_counter++;
                 std::cout << "ok: counter: " << counter << "; " << debug_counter << " from: " << num_of_debug_prints << ";";
-                #ifdef USE_DIV_COUNTERS
-                std::cout << " loops per division: full div: ave: " << g_average_loops_when_div << 
-                            ", min: " << g_min_loops_when_div << 
-                            ", max: " << g_max_loops_when_div << 
-                            ", half div: ave: " << g_average_loops_when_half_div <<
-                            ", min: " << g_min_loops_when_half_div << 
-                            ", max: " << g_max_loops_when_half_div << ";\n";
-                #endif
-                std::cout << "\tlast x / y = " << x.value() << " / " << y.value() << " = " << q.value() << ", remainder = " << r.value();
-                std::cout << std::endl << std::flush;
+#ifdef USE_DIV_COUNTERS
+                std::cout << " loops per division: full div: ave: " << g_average_loops_when_div << ", min: " << g_min_loops_when_div << ", max: " << g_max_loops_when_div << ", half div: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
+#endif
+                std::cout << "\tlast x // y = " << x.value() << " // " << y.value() << " = " << q.value() << ", remainder = " << r.value();
+                std::cout << std::endl
+                          << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);

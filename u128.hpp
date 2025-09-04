@@ -6,7 +6,7 @@
 #pragma once
 
 #include <cstdint>   // uint64_t
-#include <cassert>   // assert 
+#include <cassert>   // assert
 #include <string>    // std::string
 #include <utility>   // std::exchange
 #include <algorithm> // std::min, std::max
@@ -237,7 +237,7 @@ namespace bignum::u128
         }
 
         /**
-         * @brief Оператор инверсии битов. Не влияет на знак.
+         * @brief Оператор инверсии битов.
          */
         U128 operator~() const
         {
@@ -260,7 +260,7 @@ namespace bignum::u128
         }
 
         /**
-         *
+         * @brief Оператор суммирования.
          */
         U128 &operator+=(const U128 &Y)
         {
@@ -283,7 +283,7 @@ namespace bignum::u128
         }
 
         /**
-         *
+         * @brief Оператор вычитания.
          */
         U128 &operator-=(const U128 &Y)
         {
@@ -328,7 +328,7 @@ namespace bignum::u128
         }
 
         /**
-         *
+         * @brief Оператор умножения.
          */
         U128 &operator*=(const U128 &Y)
         {
@@ -350,7 +350,7 @@ namespace bignum::u128
         }
 
         /**
-         *
+         * @brief Половинчатый оператор умножения.
          */
         U128 &operator*=(const ULOW &Y)
         {

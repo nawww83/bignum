@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstdint> // uint16_t
 #include <compare> // operator<=>
 
 namespace sign
@@ -20,7 +21,7 @@ namespace sign
          *  0 - знака нет,
          *  Не равно 0 - знак есть.
          */
-        int mSign = 0;
+        uint16_t mSign = 0;
 
     public:
         /**

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <cstdint> // uint16_t
+#include <cstdint> // uint8_t
 #include <compare> // operator<=>
 
 namespace singular
@@ -19,12 +19,12 @@ namespace singular
         /**
          * @brief Признак переполнения.
          */
-        uint16_t mOverflow = 0;
+        uint8_t mOverflow = 0;
 
         /**
          * @brief Признак "нечисло".
          */
-        uint16_t mNaN = 0;
+        uint8_t mNaN = 0;
 
     public:
         /**
