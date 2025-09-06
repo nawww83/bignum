@@ -10,12 +10,15 @@ namespace
     auto const seed = std::random_device{}();
 
     /***
-     * Генератор случайных чисел.
+     * @brief Генератор случайных чисел на отрезке [min_value, max_value].
+     * @details Если минимальное значение в смысле беззнакового числа меньше максимального, то минимальное значение интерпретируется как отрицательное число, 
+     * модуль которого равен этому числу, взятому с отрицательным знаком в смысле оператора "минус" для беззнаковых чисел. Например, переданный интервал [-2ull, 2ull] 
+     * будет интерпетирован естественно, хотя вместо этого можно было бы передать интервал [18446744073709551614ull, 2ull], что труднее для восприятия.
      */
     auto roll_ulow = [urbg = std::mt19937{seed},
-                      distr = std::uniform_int_distribution<ULOW>{}](uint64_t max_value) mutable -> ULOW
+                      distr = std::uniform_int_distribution<ULOW>{}](uint64_t min_value, uint64_t max_value) mutable -> ULOW
     {
-        return max_value != -1ull ? distr(urbg) % (max_value + 1ull) : distr(urbg);
+        return distr(urbg) % (max_value - min_value + 1ull) + min_value;
     };
 }
 
@@ -23,7 +26,31 @@ namespace tests_u128
 {
     void debug_test()
     {
-        ;
+        std::cout << "\ndebug test 1\n";
+        // X: 340282366920938463315800654842091798559, high: low: 18446744073709551608 : 31
+        // Y: 184467440737095516141, high: low: 9 : 18446744073709551597
+        {
+            U128 x{31ull, 18446744073709551608ull};
+            U128 y{18446744073709551597ull, 9ull};
+            std::cout << "x: " << x.value() << ", y: " << y.value() << std::endl;
+            auto [q, r] = x / y;
+            std::cout << "q: " << q.value() << ", r: " << r.value() << std::endl;
+            assert(q == U128{1844674407370955160ull});
+            assert((r == U128{16602069666338596455ull, 9ull}));
+        }
+
+        std::cout << "\ndebug test 2\n";
+        // X: 340282366920938463444927863358058659862, high: low: 18446744073709551615 : 22
+        // Y: 498062089990157893615, high: low: 26 : 18446744073709551599
+        {
+            U128 x{22ull, 18446744073709551615ull};
+            U128 y{18446744073709551599ull, 26ull};
+            std::cout << "x: " << x.value() << ", y: " << y.value() << std::endl;
+            auto [q, r] = x / y;
+            std::cout << "q: " << q.value() << ", r: " << r.value() << std::endl;
+            assert(q == U128{683212743470724133ull});
+            assert((r == U128{11614616639002310283ull, 24ull}));
+        }
     }
 
     void string_value_test()
@@ -331,7 +358,7 @@ namespace tests_u128
         return num_of_runned_tests;
     }
 
-    void random_half_division_test(uint64_t max_value, int num_of_debug_prints)
+    void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
     {
 #ifdef USE_DIV_COUNTERS
         g_all_half_divs = 0;
@@ -345,8 +372,8 @@ namespace tests_u128
         for (;;)
         {
             counter++;
-            const U128 x{roll_ulow(max_value), roll_ulow(max_value)};
-            const ULOW y{roll_ulow(max_value)};
+            const U128 x{roll_ulow(min_value, max_value), roll_ulow(min_value, max_value)};
+            const ULOW y{roll_ulow(min_value, max_value)};
             if (y == ULOW{0})
                 continue;
             const auto &[q, r] = x / y;
@@ -377,7 +404,7 @@ namespace tests_u128
         std::cout << "Random test stopped.\n";
     }
 
-    void random_full_division_test(uint64_t max_value, int num_of_debug_prints)
+    void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
     {
 #ifdef USE_DIV_COUNTERS
         g_all_half_divs = 0;
@@ -395,8 +422,8 @@ namespace tests_u128
         for (;;)
         {
             counter++;
-            const U128 x{roll_ulow(max_value), roll_ulow(max_value)};
-            const U128 y{roll_ulow(max_value), roll_ulow(max_value)};
+            const U128 x{roll_ulow(min_value, max_value), roll_ulow(min_value, max_value)};
+            const U128 y{roll_ulow(min_value, max_value), roll_ulow(min_value, max_value)};
             if (y == U128{0})
                 continue;
             const auto &[q, r] = x / y;

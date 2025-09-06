@@ -9,7 +9,7 @@ int main()
 
         std::cout << "Run all tests for U128...\n";
 
-        debug_test();
+        // debug_test();
 
         string_value_test();
 
@@ -37,19 +37,23 @@ int main()
         }
 
         {
+            // Наименьшее значение половинок тестируемых чисел.
+            const uint64_t min_high_low_value = -32ull;
             // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 32;
+            const uint64_t max_high_low_value = 32ull;
             // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 4;
-            random_half_division_test(max_high_low_value, num_of_debug_prints);
+            const int num_of_debug_prints = 32;
+            random_half_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
         }
 
         {
+            // Наименьшее значение половинок тестируемых чисел.
+            const uint64_t min_high_low_value = -32ull;
             // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 32;
+            const uint64_t max_high_low_value = 32ull;
             // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 4;
-            random_full_division_test(max_high_low_value, num_of_debug_prints);
+            const int num_of_debug_prints = 32;
+            random_full_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
         }
     }
 

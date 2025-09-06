@@ -31,7 +31,7 @@ namespace tests_u128
 
     int division_test();
 
-    void random_half_division_test(uint64_t max_value, int num_of_debug_prints);
+    void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints);
 
-    void random_full_division_test(uint64_t max_value, int num_of_debug_prints);
+    void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints);
 }

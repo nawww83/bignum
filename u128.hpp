@@ -430,36 +430,47 @@ namespace bignum::u128
             const ULOW R = X.mHigh % Y.mHigh;
             const ULOW Delta = MAX_ULOW - Y.mLow;
             const U128 &DeltaQ = mult64(Delta, Q);
-            U128 W1{U128{0, R} - U128{0, Q}};
-            W1 += DeltaQ;
+            const U128 &sum_1 = U128{0, R} + DeltaQ;
+            U128 W1{sum_1 - U128{0, Q}};
+            const bool negative_sign_1 = sum_1 < U128{0, Q};
+            if (negative_sign_1)
+                W1 = (U128::get_max_value() - W1) + U128{1};
 #ifdef USE_DIV_COUNTERS
             g_all_divs++;
             double loops = 0;
 #endif
-            // ******* Unsigned hack. Это только для беззнаковых чисел.
-            // Для учета случаев, когда W1 отрицательное, если бы был знак.
-            for (; W1 >= Y;)
-            {
-#ifdef USE_DIV_COUNTERS
-                loops++;
-#endif
-                W1 += Y;
-            }
-            // ******* Unsigned hack.
             const ULOW C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
             const ULOW W2 = MAX_ULOW - Delta / C1;
             auto [Quotient, _] = W1 / W2;
             std::tie(Quotient, std::ignore) = Quotient / C1;
-            U128 result = U128{Q} + Quotient;
+            if (negative_sign_1)
+                Quotient = (U128::get_max_value() - Quotient) + U128{1};
+            U128 result = U128{Q} + Quotient - (negative_sign_1 ? U128{1} : U128{0});
             const U128 &N = Y * result.mLow;
             U128 Error{X - N};
-            while (Error >= Y)
+            const bool negative_sign_2 = X < N;
+            const auto Error_old = Error;
+            if (negative_sign_2)
             {
+                while (Error >= Y)
+                {
 #ifdef USE_DIV_COUNTERS
-                loops++;
+                    loops++;
 #endif
-                result.dec();
-                Error += Y;
+                    result.dec();
+                    Error += Y;
+                }
+            }
+            else
+            {
+                while (Error >= Y)
+                {
+#ifdef USE_DIV_COUNTERS
+                    loops++;
+#endif
+                    result.inc();
+                    Error -= Y;
+                }
             }
 #ifdef USE_DIV_COUNTERS
             g_average_loops_when_div += (loops - g_average_loops_when_div) / g_all_divs;
