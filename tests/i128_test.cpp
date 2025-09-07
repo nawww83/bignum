@@ -9,7 +9,8 @@ namespace tests_i128
 {
     void debug_test()
     {
-        ;
+        I128 x;
+        std::cout << "Sizeof I128 = " << sizeof(x) << std::endl;
     }
 
     void cmp_operator_test()
@@ -123,6 +124,18 @@ namespace tests_i128
             I128 z = x + y;
             assert((z == I128{U128{0, 1}}));
         }
+        {
+            I128 x{U128{-2ull, -1ull}};
+            I128 y{U128{1}};
+            I128 z = x + y;
+            assert(!z.is_overflow());
+        }
+        {
+            I128 x{U128{-1ull, -1ull}};
+            I128 y{U128{1}};
+            I128 z = x + y;
+            assert(z.is_overflow());
+        }
     }
 
     void subtraction_test()
@@ -150,6 +163,18 @@ namespace tests_i128
             I128 y{U128{3}};
             I128 z = x - y;
             assert(z == I128{U128{5}});
+        }
+        {
+            I128 x{U128{1, 2}};
+            I128 y{U128{2, 1}};
+            I128 z = x - y;
+            assert((z == I128{U128{-1ull, 0}}));
+        }
+        {
+            I128 x{U128{2, 1}};
+            I128 y{U128{1, 2}};
+            I128 z = x - y;
+            assert((z == I128{U128{-1ull, 0}, Sign{true}}));
         }
     }
 }

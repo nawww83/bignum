@@ -13,8 +13,8 @@
 namespace bignum::i128
 {
     using U128 = bignum::u128::U128;
-    using Sign = sign::Sign<uint16_t>;
-    using Singular = singular::Singular<uint8_t>;
+    using Sign = sign::Sign<uint32_t>;
+    using Singular = singular::Singular<uint16_t>;
 
     /**
      * @brief Тип половинки числа.
