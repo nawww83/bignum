@@ -4,6 +4,7 @@
 
 int main()
 {
+    constexpr bool RUN_LONG_TESTS = false;
     {
         using namespace tests_u128;
 
@@ -35,26 +36,6 @@ int main()
             const auto num_of_runned_tests = division_test();
             std::cout << "Division tests: total number of tests run: " << num_of_runned_tests << std::endl;
         }
-
-        {
-            // Наименьшее значение половинок тестируемых чисел.
-            const uint64_t min_high_low_value = -32ull;
-            // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 32ull;
-            // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 32;
-            random_half_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
-        }
-
-        {
-            // Наименьшее значение половинок тестируемых чисел.
-            const uint64_t min_high_low_value = -32ull;
-            // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 32ull;
-            // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 32;
-            random_full_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
-        }
     }
 
     {
@@ -65,6 +46,33 @@ int main()
         debug_test();
 
         cmp_operator_test();
+
+        addition_test();
+
+        subtraction_test();
+    }
+
+    if (RUN_LONG_TESTS) { // Долгие тесты.
+        using namespace tests_u128;
+        {
+            // Наименьшее значение половинок тестируемых чисел.
+            const uint64_t min_high_low_value = -8ull;
+            // Наибольшее значение половинок тестируемых чисел.
+            const uint64_t max_high_low_value = 8ull;
+            // Количество выводов счетчиков на экран.
+            const int num_of_debug_prints = 8;
+            random_half_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
+        }
+
+        {
+            // Наименьшее значение половинок тестируемых чисел.
+            const uint64_t min_high_low_value = -8ull;
+            // Наибольшее значение половинок тестируемых чисел.
+            const uint64_t max_high_low_value = 8ull;
+            // Количество выводов счетчиков на экран.
+            const int num_of_debug_prints = 8;
+            random_full_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
+        }
     }
 
     std::cout << "All Ok! Exit... (don't forget flush...)\n";

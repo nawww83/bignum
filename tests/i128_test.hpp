@@ -10,4 +10,8 @@ namespace tests_i128
     void debug_test();
 
     void cmp_operator_test();
+
+    void addition_test();
+
+    void subtraction_test();
 }

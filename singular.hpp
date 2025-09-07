@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <cstdint> // uint8_t
+#include <concepts>
 #include <compare> // operator<=>
 
 namespace singular
@@ -14,17 +14,18 @@ namespace singular
     /**
      * @brief Индикатор сингулярности числа: его переполнения или признака "нечисло".
      */
+    template <std::unsigned_integral T>
     class Singular
     {
         /**
          * @brief Признак переполнения.
          */
-        uint8_t mOverflow = 0;
+        T mOverflow = 0;
 
         /**
          * @brief Признак "нечисло".
          */
-        uint8_t mNaN = 0;
+        T mNaN = 0;
 
     public:
         /**
@@ -88,6 +89,22 @@ namespace singular
          * @brief Признак "нечисло".
          */
         bool is_nan() const { return mNaN != 0; }
+
+        /**
+         * @brief
+         */
+        void set_nan() {
+            mNaN = 1;
+            mOverflow = 0;
+        }
+
+        /**
+         * @brief
+         */
+        void set_overflow() {
+            mNaN = 0;
+            mOverflow = 1;
+        }
     };
 
 }

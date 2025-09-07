@@ -102,4 +102,54 @@ namespace tests_i128
             assert(x != y);
         }
     }
+
+    void addition_test()
+    {
+        {
+            I128 x{U128{1}};
+            I128 y{U128{1}};
+            I128 z = x + y;
+            assert(z == I128{U128{2}});
+        }
+        {
+            I128 x{U128{3, 1}};
+            I128 y{U128{1, 2}};
+            I128 z = x + y;
+            assert((z == I128{U128{4, 3}}));
+        }
+        {
+            I128 x{U128{-1ull}};
+            I128 y{U128{1}};
+            I128 z = x + y;
+            assert((z == I128{U128{0, 1}}));
+        }
+    }
+
+    void subtraction_test()
+    {
+        {
+            I128 x{U128{1}};
+            I128 y{U128{1}};
+            I128 z = x - y;
+            assert(z.is_zero());
+        }
+        {
+            I128 x{U128{1}};
+            I128 y{U128{2}};
+            I128 z = x - y;
+            assert((z == I128{U128{1}, Sign{true}}));
+        }
+        {
+            I128 x{U128{0}};
+            I128 y{U128{1}};
+            I128 z = x - y;
+            assert((z == I128{U128{1}, Sign{true}}));
+        }
+        {
+            I128 x{U128{8}};
+            I128 y{U128{3}};
+            I128 z = x - y;
+            assert(z == I128{U128{5}});
+        }
+    }
 }

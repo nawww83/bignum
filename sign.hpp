@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <cstdint> // uint16_t
+#include <concepts>
 #include <compare> // operator<=>
 
 namespace sign
@@ -14,6 +14,7 @@ namespace sign
     /**
      * @brief Знаковый манипулятор.
      */
+    template <std::unsigned_integral T>
     class Sign
     {
         /**
@@ -21,7 +22,7 @@ namespace sign
          *  0 - знака нет,
          *  Не равно 0 - знак есть.
          */
-        uint16_t mSign = 0;
+        T mSign = 0;
 
     public:
         /**
@@ -71,6 +72,15 @@ namespace sign
          * @brief Остальные операторы, кроме оператора сравнения: удалены, потому что не определены (нет необходимости).
          */
         auto operator<=>(const Sign &other) = delete;
+
+        /**
+         * @brief Установить знак:
+         *  1 - знак "минус".
+         *  0 - знак "плюс".
+         */
+        void set_sign(bool sign) {
+            mSign = sign;
+        }
     };
 
 }
