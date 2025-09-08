@@ -50,6 +50,8 @@ int main()
         addition_test();
 
         subtraction_test();
+
+        mulpiplication_test();
     }
 
     if (RUN_LONG_TESTS) { // Долгие тесты.

@@ -176,5 +176,65 @@ namespace tests_i128
             I128 z = x - y;
             assert((z == I128{U128{-1ull, 0}, Sign{true}}));
         }
+        {
+            I128 x{U128{-1ull, -1ull}, Sign{true}};
+            I128 y{U128{1}};
+            I128 z = x - y;
+            assert(z.is_overflow());
+        }
+    }
+
+    void mulpiplication_test()
+    {
+        {
+            I128 x{U128{8}};
+            I128 y{U128{3}};
+            I128 z = x * y;
+            assert(z == I128{U128{24}});
+        }
+        {
+            I128 x{U128{8}, Sign{true}};
+            I128 y{U128{3}};
+            I128 z = x * y;
+            assert(z == -I128{U128{24}});
+        }
+        {
+            I128 x{U128{8}};
+            I128 y{U128{3}, Sign{true}};
+            I128 z = x * y;
+            assert((z == I128{U128{24}, Sign{true}}));
+        }
+        {
+            I128 x{U128{8}, Sign{true}};
+            I128 y{U128{3}, Sign{true}};
+            I128 z = x * y;
+            assert(z == I128{U128{24}});
+        }
+        {
+            I128 x{U128{1, 1}};
+            I128 y{U128{1, 1}};
+            I128 z = x * y;
+            assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{0, 1}};
+            ULOW y{-1ull};
+            I128 z = x * y;
+            assert(!z.is_overflow());
+            assert((z == I128{U128{0, 18446744073709551615ull}}));
+        }
+        {
+            I128 x{U128{1, 1}};
+            ULOW y{-1ull};
+            I128 z = x * y;
+            assert(!z.is_overflow());
+            assert((z == I128{U128{18446744073709551615ull, 18446744073709551615ull}}));
+        }
+        {
+            I128 x{U128{0, 2}};
+            ULOW y{-1ull};
+            I128 z = x * y;
+            assert(z.is_overflow());
+        }
     }
 }

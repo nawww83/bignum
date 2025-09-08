@@ -14,4 +14,6 @@ namespace tests_i128
     void addition_test();
 
     void subtraction_test();
+
+    void mulpiplication_test();
 }

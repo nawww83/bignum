@@ -119,11 +119,6 @@ namespace bignum::i128
             return mUnsigned == U128{0} && !is_singular();
         }
 
-        bool is_unit() const
-        {
-            return mUnsigned == U128{1} && !mSign() && !is_singular();
-        }
-
         /**
          * @brief x < 0
          */
@@ -303,10 +298,12 @@ namespace bignum::i128
                 return result;
             }
             result.mUnsigned = X.mUnsigned + Y.mUnsigned;
-            if (X.is_negative() && Y.is_negative()) {
+            if (X.is_negative() && Y.is_negative())
+            {
                 result.mSign.set_sign(true);
             }
-            if (result.mUnsigned < std::min(X.mUnsigned, Y.mUnsigned)) {
+            if (result.mUnsigned < std::min(X.mUnsigned, Y.mUnsigned))
+            {
                 result.mSingular.set_overflow();
             }
             return result;
@@ -321,7 +318,10 @@ namespace bignum::i128
             return *this;
         }
 
-        I128 operator-(const I128& rhs) const
+        /**
+         * @brief
+         */
+        I128 operator-(const I128 &rhs) const
         {
             I128 X = *this;
             I128 Y = rhs;
@@ -360,19 +360,106 @@ namespace bignum::i128
                 -result.mSign;
                 return result;
             }
-            if (X.mUnsigned >= Y.mUnsigned) {
+            if (X.mUnsigned >= Y.mUnsigned)
+            {
                 result.mUnsigned = X.mUnsigned - Y.mUnsigned;
-            } else {
+            }
+            else
+            {
                 result.mUnsigned = Y.mUnsigned - X.mUnsigned;
                 result.mSign.set_sign(true);
             }
             return result;
         }
 
-        I128 &operator-=(const I128& other)
+        /**
+         * @brief
+         */
+        I128 &operator-=(const I128 &other)
         {
             *this = *this - other;
             return *this;
+        }
+
+        /**
+         * @brief Знак минус.
+         */
+        I128 operator-()
+        {
+            I128 result = *this;
+            -result.mSign;
+            return result;
+        }
+
+        /**
+         * @brief
+         */
+        I128 operator*(ULOW rhs) const
+        {
+            const I128 &X = *this;
+            if (X.is_overflow())
+            {
+                I128 result;
+                result.set_overflow();
+                return result;
+            }
+            if (X.is_nan())
+            {
+                I128 result;
+                result.set_nan();
+                return result;
+            }
+            if (X.is_zero())
+                return I128{0};
+            if (rhs == 0)
+                return I128{0};
+            I128 result {U128::mult64(X.mUnsigned.low(), rhs)};
+            I128 tmp {U128::mult64(X.mUnsigned.high(), rhs)};
+            result += shl64(tmp);
+            result.mSign = X.mSign();
+            return result;
+        }
+
+        /**
+         * @brief
+         */
+        I128 operator*(const I128& rhs) const
+        {
+            const I128 &X = *this;
+            if (X.is_overflow() || rhs.is_overflow())
+            {
+                I128 result;
+                result.set_overflow();
+                return result;
+            }
+            if (X.is_nan() || rhs.is_nan())
+            {
+                I128 result;
+                result.set_nan();
+                return result;
+            }
+            if (X.is_zero())
+                return I128{0};
+            if (rhs.is_zero())
+                return I128{0};
+            I128 result = X * rhs.mUnsigned.low();
+            if (result.is_singular())
+                return result;
+            result.mSign = X.mSign ^ rhs.mSign;
+            result += shl64( X * rhs.mUnsigned.high() );
+            return result;
+        }
+
+        /**
+         * @brief Сдвиг влеово на 64 бита беззнаковой части.
+         * Сохраняет знак. С переполнением.
+         */
+        static I128 shl64(const I128& x)
+        { // x * 2^64
+            I128 result{x.mUnsigned << 64, x.mSign, x.mSingular};
+            if (x.mUnsigned >= U128{0, 1} && !x.is_singular())
+                result.set_overflow();
+            return result;
         }
 
     private:

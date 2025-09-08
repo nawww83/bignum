@@ -48,6 +48,25 @@ namespace sign
         constexpr Sign &operator=(Sign &&other) = default;
 
         /**
+         * @brief
+         */
+        Sign operator^(const Sign& rhs) const
+        {
+            Sign result = *this;
+            result.set_sign( *this != rhs );
+            return result;
+        }
+
+        /**
+         * @brief
+         */
+        Sign& operator^=(const Sign& rhs)
+        {
+            *this = *this ^ rhs;
+            return *this;
+        }
+
+        /**
          * @brief Тестирует, знак есть/нет.
          */
         bool operator()() const { return mSign != 0; }

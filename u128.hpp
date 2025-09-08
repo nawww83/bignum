@@ -481,13 +481,29 @@ namespace bignum::u128
         }
 
         /**
-         *
+         * @brief
          */
         std::pair<U128, U128> operator/=(const U128 &Y)
         {
             U128 remainder;
             std::tie(*this, remainder) = *this / Y;
             return std::make_pair(*this, remainder);
+        }
+
+        /**
+         * @brief
+         */
+        ULOW low() const
+        {
+            return mLow;
+        }
+
+        /**
+         * @brief
+         */
+        ULOW high() const
+        {
+            return mHigh;
         }
 
         /**
