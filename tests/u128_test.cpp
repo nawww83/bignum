@@ -16,7 +16,7 @@ namespace
      * будет интерпетирован естественно, хотя вместо этого можно было бы передать интервал [18446744073709551614ull, 2ull], что труднее для восприятия.
      */
     auto roll_ulow = [urbg = std::mt19937{seed},
-                      distr = std::uniform_int_distribution<ULOW>{}](uint64_t min_value, uint64_t max_value) mutable -> ULOW
+                      distr = std::uniform_int_distribution<u64>{}](uint64_t min_value, uint64_t max_value) mutable -> u64
     {
         return distr(urbg) % (max_value - min_value + 1ull) + min_value;
     };
@@ -374,16 +374,16 @@ namespace tests_u128
             counter++;
             const U128 x{roll_ulow(min_value, max_value), roll_ulow(min_value, max_value)};
             const ULOW y{roll_ulow(min_value, max_value)};
-            if (y == ULOW{0})
+            if (y() == ULOW{0}())
                 continue;
             const auto &[q, r] = x / y;
             const auto &x_restored = q * y + r;
-            const bool is_rem_ok = r < U128{y};
+            const bool is_rem_ok = r < U128{y()};
             const bool equality = x_restored == x;
             if (!is_rem_ok || !equality)
             {
                 std::cout << "x: " << x.value() << std::endl;
-                std::cout << "y: " << y << std::endl;
+                std::cout << "y: " << y() << std::endl;
             }
             if ((counter % (1024ull * 65536ull)) == 0)
             {
@@ -392,7 +392,7 @@ namespace tests_u128
 #ifdef USE_DIV_COUNTERS
                 std::cout << " loops per division: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
 #endif
-                std::cout << "\tlast x // y = " << x.value() << " // " << y << " = " << q.value() << ", remainder = " << r.value();
+                std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
                 std::cout << std::endl
                           << std::flush;
             }

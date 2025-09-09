@@ -7,6 +7,7 @@
 #include "u128.hpp"     // U128
 #include "sign.hpp"     // Sign
 #include "singular.hpp" // Singular
+#include "ulow.hpp"     // low64::ULOW
 
 #pragma once
 
@@ -16,10 +17,12 @@ namespace bignum::i128
     using Sign = sign::Sign<uint32_t>;
     using Singular = singular::Singular<uint16_t>;
 
+    using u64 = uint64_t;
+
     /**
      * @brief Тип половинки числа.
      */
-    using ULOW = uint64_t;
+    using ULOW = low64::ULOW;
 
     /**
      * Класс для арифметики 128-битных знаковых целых чисел с переполнением, основанный на классе беззнаковых чисел U128 и знаковом манипуляторе.
@@ -35,7 +38,7 @@ namespace bignum::i128
         /**
          * @brief Конструктор с параметром.
          */
-        explicit constexpr I128(ULOW low) : mUnsigned{low}
+        constexpr I128(u64 low) : mUnsigned{low}
         {
             ;
         }
@@ -43,7 +46,7 @@ namespace bignum::i128
         /**
          * @brief Конструктор с параметрами.
          */
-        explicit constexpr I128(U128 x, Sign sign = false) : mUnsigned{x}, mSign{sign}
+        constexpr I128(U128 x, Sign sign = false) : mUnsigned{x}, mSign{sign}
         {
             ;
         }
@@ -51,7 +54,7 @@ namespace bignum::i128
         /**
          * @brief Конструктор с параметрами.
          */
-        explicit constexpr I128(U128 x, Sign sign, Singular singularity) : mUnsigned{x}, mSign{sign}, mSingular{singularity}
+        constexpr I128(U128 x, Sign sign, Singular singularity) : mUnsigned{x}, mSign{sign}, mSingular{singularity}
         {
             ;
         }
@@ -394,7 +397,7 @@ namespace bignum::i128
         /**
          * @brief
          */
-        I128 operator*(ULOW rhs) const
+        I128 operator*(const ULOW& rhs) const
         {
             const I128 &X = *this;
             if (X.is_overflow())
@@ -411,10 +414,10 @@ namespace bignum::i128
             }
             if (X.is_zero())
                 return I128{0};
-            if (rhs == 0)
+            if (rhs() == 0)
                 return I128{0};
-            I128 result {U128::mult64(X.mUnsigned.low(), rhs)};
-            I128 tmp {U128::mult64(X.mUnsigned.high(), rhs)};
+            I128 result{U128::mult64(X.mUnsigned.low(), rhs)};
+            I128 tmp{U128::mult64(X.mUnsigned.high(), rhs)};
             result += shl64(tmp);
             result.mSign = X.mSign();
             return result;
@@ -423,7 +426,7 @@ namespace bignum::i128
         /**
          * @brief
          */
-        I128 operator*(const I128& rhs) const
+        I128 operator*(const I128 &rhs) const
         {
             const I128 &X = *this;
             if (X.is_overflow() || rhs.is_overflow())
@@ -446,7 +449,7 @@ namespace bignum::i128
             if (result.is_singular())
                 return result;
             result.mSign = X.mSign ^ rhs.mSign;
-            result += shl64( X * rhs.mUnsigned.high() );
+            result += shl64(X * rhs.mUnsigned.high());
             return result;
         }
 
@@ -454,7 +457,7 @@ namespace bignum::i128
          * @brief Сдвиг влеово на 64 бита беззнаковой части.
          * Сохраняет знак. С переполнением.
          */
-        static I128 shl64(const I128& x)
+        static I128 shl64(const I128 &x)
         { // x * 2^64
             I128 result{x.mUnsigned << 64, x.mSign, x.mSingular};
             if (x.mUnsigned >= U128{0, 1} && !x.is_singular())

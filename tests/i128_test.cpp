@@ -224,6 +224,13 @@ namespace tests_i128
             assert((z == I128{U128{0, 18446744073709551615ull}}));
         }
         {
+            I128 x{U128{0, 1}};
+            ULOW y{-1ull};
+            I128 z = y * x;
+            assert(!z.is_overflow());
+            assert((z == I128{U128{0, 18446744073709551615ull}}));
+        }
+        {
             I128 x{U128{1, 1}};
             ULOW y{-1ull};
             I128 z = x * y;
