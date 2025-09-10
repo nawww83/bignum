@@ -14,11 +14,14 @@ namespace
      * @details Если минимальное значение в смысле беззнакового числа меньше максимального, то минимальное значение интерпретируется как отрицательное число, 
      * модуль которого равен этому числу, взятому с отрицательным знаком в смысле оператора "минус" для беззнаковых чисел. Например, переданный интервал [-2ull, 2ull] 
      * будет интерпетирован естественно, хотя вместо этого можно было бы передать интервал [18446744073709551614ull, 2ull], что труднее для восприятия.
+     * ! Исключение сделано для сочетания (1, 0) - в этом случае диапазон неограничен.
      */
     auto roll_ulow = [urbg = std::mt19937{seed},
                       distr = std::uniform_int_distribution<u64>{}](uint64_t min_value, uint64_t max_value) mutable -> u64
     {
-        return distr(urbg) % (max_value - min_value + 1ull) + min_value;
+        if (min_value != 1ull && max_value != 0ull)
+            return distr(urbg) % (max_value - min_value + 1ull) + min_value;
+        return distr(urbg);
     };
 }
 
@@ -228,6 +231,11 @@ namespace tests_u128
             U128 z = x * y;                  // 680564733841876927018982935232084180994 mod 2^128 = 92233720368547758082
             assert((z == U128{2ull, 5ull})); // 92233720368547758082 = 2 + 5 * 2^64
         }
+        {
+            U128 x{2};
+            U128 z = x * x;
+            assert(z == U128{4});
+        }
     }
 
     int division_test()
@@ -366,7 +374,11 @@ namespace tests_u128
         g_max_loops_when_half_div = 0;
         g_min_loops_when_half_div = 0;
 #endif
-        std::cout << "Run half division random test...\n";
+        std::cout << "Run half-division random test";
+        if (min_value != 1 && max_value != 0)
+            std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
+        else
+            std::cout << std::endl;
         uint64_t counter = 0;
         int debug_counter = 0;
         for (;;)
@@ -374,11 +386,11 @@ namespace tests_u128
             counter++;
             const U128 x{roll_ulow(min_value, max_value), roll_ulow(min_value, max_value)};
             const ULOW y{roll_ulow(min_value, max_value)};
-            if (y() == ULOW{0}())
+            if (y == ULOW{0})
                 continue;
             const auto &[q, r] = x / y;
             const auto &x_restored = q * y + r;
-            const bool is_rem_ok = r < U128{y()};
+            const bool is_rem_ok = r < U128{y};
             const bool equality = x_restored == x;
             if (!is_rem_ok || !equality)
             {
@@ -416,7 +428,11 @@ namespace tests_u128
         g_max_loops_when_div = 0;
         g_min_loops_when_div = 0;
 #endif
-        std::cout << "Run full division random test...\n";
+        std::cout << "Run full division random test";
+        if (min_value != 1 && max_value != 0)
+            std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
+        else
+            std::cout << std::endl;
         uint64_t counter = 0;
         int debug_counter = 0;
         for (;;)

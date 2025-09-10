@@ -24,6 +24,11 @@ namespace low64
         constexpr ULOW(uint64_t value) : mValue(value) {}
 
         /**
+         * @brief
+         */
+        auto operator<=>(const ULOW&) const = default; 
+
+        /**
          * @brief Оператор доступа к числу.
          */
         uint64_t operator()() const
@@ -39,8 +44,129 @@ namespace low64
             return mValue;
         }
 
-        ULOW operator*(const ULOW&) const = delete;
-        ULOW& operator*=(const ULOW&) = delete;
+        /**
+         * @brief Оператор инверсии битов.
+         */
+        ULOW operator~() const
+        {
+            ULOW result = *this;
+            result.mValue = ~result.mValue;
+            return result;
+        }
+
+        ULOW operator<<(uint32_t shift) const
+        {
+            ULOW result = *this;
+            result.mValue <<= shift;
+            return result;
+        }
+
+        ULOW& operator<<=(uint32_t shift)
+        {
+            *this = *this << shift;
+            return *this;
+        }
+
+        ULOW operator>>(uint32_t shift) const
+        {
+            ULOW result = *this;
+            result.mValue >>= shift;
+            return result;
+        }
+
+        ULOW& operator>>=(uint32_t shift)
+        {
+            *this = *this >> shift;
+            return *this;
+        }
+
+        ULOW operator&(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue &= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator&=(const ULOW& rhs) {
+            *this = *this & rhs;
+            return *this;
+        }
+
+        ULOW operator|(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue |= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator|=(const ULOW& rhs) {
+            *this = *this | rhs;
+            return *this;
+        }
+
+        ULOW operator^(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue ^= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator^=(const ULOW& rhs) {
+            *this = *this ^ rhs;
+            return *this;
+        }
+
+        ULOW operator+(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue += rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator+=(const ULOW& rhs) {
+            *this = *this + rhs;
+            return *this;
+        }
+
+        ULOW operator-(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue -= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator-=(const ULOW& rhs) {
+            *this = *this - rhs;
+            return *this;
+        }
+
+        ULOW operator*(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue *= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator*=(const ULOW& rhs) {
+            *this = *this * rhs;
+            return *this;
+        }
+
+        ULOW operator/(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue /= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator/=(const ULOW& rhs) {
+            *this = *this / rhs;
+            return *this;
+        }
+
+        ULOW operator%(const ULOW& rhs) const {
+            ULOW result = *this;
+            result.mValue %= rhs.mValue;
+            return result;
+        }
+
+        ULOW& operator%=(const ULOW& rhs) {
+            *this = *this % rhs;
+            return *this;
+        }
 
         /**
          * @brief Оператор умножения. Позволяет перемножать половинчатые числа, расположенные слева от полного числа.

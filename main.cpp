@@ -4,7 +4,7 @@
 
 int main()
 {
-    constexpr bool RUN_LONG_TESTS = false;
+    constexpr bool RUN_LONG_TESTS = true;
     {
         using namespace tests_u128;
 
@@ -56,24 +56,28 @@ int main()
 
     if (RUN_LONG_TESTS) { // Долгие тесты.
         using namespace tests_u128;
+        // Количество выводов счетчиков на экран.
+        constexpr int num_of_debug_prints = 3;
         {
             // Наименьшее значение половинок тестируемых чисел.
-            const uint64_t min_high_low_value = -8ull;
+            const uint64_t min_high_low_value = -128ull;
             // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 8ull;
-            // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 8;
+            const uint64_t max_high_low_value = 128ull;
             random_half_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
         }
-
         {
             // Наименьшее значение половинок тестируемых чисел.
-            const uint64_t min_high_low_value = -8ull;
+            const uint64_t min_high_low_value = -128ull;
             // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 8ull;
-            // Количество выводов счетчиков на экран.
-            const int num_of_debug_prints = 8;
+            const uint64_t max_high_low_value = 128ull;
             random_full_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
+        }
+        // Неограниченные по диапазону числа.
+        {
+            random_half_division_test(1, 0, num_of_debug_prints);
+        }
+        {
+            random_full_division_test(1, 0, num_of_debug_prints);
         }
     }
 
