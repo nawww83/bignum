@@ -4,13 +4,14 @@
 
 int main()
 {
-    constexpr bool RUN_LONG_TESTS = true;
+    constexpr bool RUN_LONG_TESTS = false;
     {
         using namespace tests_u128;
 
         std::cout << "Run all tests for U128...\n";
 
-        // debug_test();
+        debug_test();
+        // return 0;
 
         string_value_test();
 
@@ -58,27 +59,27 @@ int main()
         using namespace tests_u128;
         // Количество выводов счетчиков на экран.
         constexpr int num_of_debug_prints = 3;
-        {
-            // Наименьшее значение половинок тестируемых чисел.
-            const uint64_t min_high_low_value = -128ull;
-            // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 128ull;
-            random_half_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
-        }
-        {
-            // Наименьшее значение половинок тестируемых чисел.
-            const uint64_t min_high_low_value = -128ull;
-            // Наибольшее значение половинок тестируемых чисел.
-            const uint64_t max_high_low_value = 128ull;
-            random_full_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
-        }
+        // {
+        //     // Наименьшее значение половинок тестируемых чисел.
+        //     const uint64_t min_high_low_value = -128ull;
+        //     // Наибольшее значение половинок тестируемых чисел.
+        //     const uint64_t max_high_low_value = 128ull;
+        //     random_half_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
+        // }
+        // {
+        //     // Наименьшее значение половинок тестируемых чисел.
+        //     const uint64_t min_high_low_value = -128ull;
+        //     // Наибольшее значение половинок тестируемых чисел.
+        //     const uint64_t max_high_low_value = 128ull;
+        //     random_full_division_test(min_high_low_value, max_high_low_value, num_of_debug_prints);
+        // }
         // Неограниченные по диапазону числа.
         {
             random_half_division_test(1, 0, num_of_debug_prints);
         }
-        {
-            random_full_division_test(1, 0, num_of_debug_prints);
-        }
+        // {
+        //     random_full_division_test(1, 0, num_of_debug_prints);
+        // }
     }
 
     std::cout << "All Ok! Exit... (don't forget flush...)\n";

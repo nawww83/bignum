@@ -11,7 +11,8 @@
 #include <utility>   // std::exchange
 #include <algorithm> // std::min, std::max
 #include <tuple>     // std::pair, std::tie
-#include "ulow.hpp" // low64::ULOW
+#include <bit>       // std::countl_zero
+#include "ulow.hpp"  // low64::ULOW
 
 /**
  * @brief Использовать счетчики для проверки количества итераций операции деления.
@@ -33,9 +34,11 @@ namespace bignum::u128
     inline double g_average_loops_when_half_div = 0;
 
     inline double g_all_half_divs = 0;
+
+    inline uint64_t g_hist[128];
 #endif
     /**
-     * 
+     *
      */
     using u64 = uint64_t;
 
@@ -175,7 +178,7 @@ namespace bignum::u128
                 ULOW mask = AllUnits();
                 mask <<= ishift;
                 mask = ~mask;
-                const auto& H = result.mHigh & mask;
+                const auto &H = result.mHigh & mask;
                 result.mLow >>= ishift;
                 result.mHigh >>= ishift;
                 result.mLow |= ishift == 0 ? H : H << (64 - ishift);
@@ -275,7 +278,7 @@ namespace bignum::u128
         {
             const U128 &X = *this;
             U128 result{X.mLow + Y.mLow, X.mHigh + Y.mHigh};
-            const auto& carry = ULOW{ result.mLow < std::min(X.mLow, Y.mLow) ? 1ull : 0ull };
+            const auto &carry = ULOW{result.mLow < std::min(X.mLow, Y.mLow) ? 1ull : 0ull};
             result.mHigh += carry;
             return result;
         }
@@ -297,7 +300,7 @@ namespace bignum::u128
             const U128 &X = *this;
             if (X >= Y)
             {
-                const auto& high = (X.mHigh - Y.mHigh) - ULOW{X.mLow < Y.mLow ? 1ull : 0ull};
+                const auto &high = (X.mHigh - Y.mHigh) - ULOW{X.mLow < Y.mLow ? 1ull : 0ull};
                 return U128{X.mLow - Y.mLow, high};
             }
             return (X + (U128::get_max_value() - Y)).inc();
@@ -382,42 +385,37 @@ namespace bignum::u128
         /**
          * @brief Половинчатый оператор полного деления.
          * @details Авторский метод итеративного деления "широкого" числа на "узкое".
-         * @return Частное от деления и остаток.
+         * Требует тестирования.
+         * @return Частное от деления Q и остаток R.
          */
         std::pair<U128, U128> operator/(const ULOW &Y) const
         {
             assert(Y != 0);
-            const U128 &X = *this;
-            constexpr auto MAX_ULOW = AllUnits();
-            ULOW Q { X.mHigh / Y };
-            ULOW R { X.mHigh % Y };
-            ULOW N { R * (MAX_ULOW / Y) + (X.mLow / Y) };
-            U128 result{N, Q};
-            U128 E = X - result * Y; // Остаток от деления.
-#ifdef USE_DIV_COUNTERS
-            g_all_half_divs++;
-            double loops = 0;
-#endif
-            for (;;)
-            {
-#ifdef USE_DIV_COUNTERS
-                loops++;
-#endif
-                Q = E.mHigh / Y;
-                R = E.mHigh % Y;
-                N = R * (MAX_ULOW / Y) + (E.mLow / Y);
-                const U128 tmp{N, Q};
-                if (tmp == U128{0})
-                    break;
-                result += tmp;
-                E -= tmp * Y;
+            U128 X = *this;
+            if (Y == ULOW{1}) {
+                return {X, U128{0}};
             }
-#ifdef USE_DIV_COUNTERS
-            g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
-            g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
-            g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
-#endif
-            return std::make_pair(result, E);
+            U128 Q{0};
+            ULOW R = 0;
+            const auto& rcp = reciprocal_and_extend(Y);
+            // std::cout << "reciprocal: q, r: " << rcp.first() << ", " << rcp.second() << std::endl;
+            auto iteration = [&X, &Q, &R, Y, &rcp]() {
+                // const auto& [u, v] = mult64(X.high(), rcp.first);
+                // std::cout << "u, v: " << u() << ", " << v() << std::endl;
+                Q += mult64(X.high(), rcp.first);
+                Q += U128{X.low() / Y};
+                R += X.low() % Y;
+                Q += U128{R / Y};
+                R %= Y;
+                // std::cout << "Q, R: " << Q.value() << ", " << R() << std::endl;
+                X = mult64(X.high(), rcp.second);
+            };
+            while (X != U128{0})
+            {
+                iteration();
+                // std::cout << "X: " << X.value() << std::endl;
+            }
+            return {Q, R};
         }
 
         /**
@@ -447,9 +445,9 @@ namespace bignum::u128
                 return result;
             }
             constexpr auto MAX_ULOW = AllUnits();
-            const ULOW& Q = X.mHigh / Y.mHigh;
-            const ULOW& R = X.mHigh % Y.mHigh;
-            const ULOW& Delta = MAX_ULOW - Y.mLow;
+            const ULOW &Q = X.mHigh / Y.mHigh;
+            const ULOW &R = X.mHigh % Y.mHigh;
+            const ULOW &Delta = MAX_ULOW - Y.mLow;
             const U128 &DeltaQ = mult64(Delta, Q);
             const U128 &sum_1 = U128{0, R} + DeltaQ;
             U128 W1{sum_1 - U128{0, Q}};
@@ -460,8 +458,8 @@ namespace bignum::u128
             g_all_divs++;
             double loops = 0;
 #endif
-            const ULOW& C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
-            const ULOW& W2 = MAX_ULOW - Delta / C1;
+            const ULOW &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
+            const ULOW &W2 = MAX_ULOW - Delta / C1;
             auto [Quotient, _] = W1 / W2;
             std::tie(Quotient, std::ignore) = Quotient / C1;
             if (negative_sign_1)
@@ -477,6 +475,7 @@ namespace bignum::u128
                 {
 #ifdef USE_DIV_COUNTERS
                     loops++;
+                    assert(loops < 128);
 #endif
                     result.dec();
                     Error += Y;
@@ -488,6 +487,7 @@ namespace bignum::u128
                 {
 #ifdef USE_DIV_COUNTERS
                     loops++;
+                    assert(loops < 128);
 #endif
                     result.inc();
                     Error -= Y;
@@ -543,24 +543,24 @@ namespace bignum::u128
         {
             constexpr int QUORTER_WIDTH = 32; // Четверть ширины 128-битного числа.
             constexpr ULOW MASK = (ULOW{1}() << QUORTER_WIDTH) - 1;
-            const ULOW& x_low = x & MASK;
-            const ULOW& y_low = y & MASK;
-            const ULOW& x_high = x >> QUORTER_WIDTH;
-            const ULOW& y_high = y >> QUORTER_WIDTH;
-            const ULOW& t1 = x_low * y_low;
-            const ULOW& t = t1 >> QUORTER_WIDTH;
-            const ULOW& t21 = x_low * y_high;
-            const ULOW& q = t21 >> QUORTER_WIDTH;
-            const ULOW& p = t21 & MASK;
-            const ULOW& t22 = x_high * y_low;
-            const ULOW& s = t22 >> QUORTER_WIDTH;
-            const ULOW& r = t22 & MASK;
-            const ULOW& t3 = x_high * y_high;
+            const ULOW &x_low = x & MASK;
+            const ULOW &y_low = y & MASK;
+            const ULOW &x_high = x >> QUORTER_WIDTH;
+            const ULOW &y_high = y >> QUORTER_WIDTH;
+            const ULOW &t1 = x_low * y_low;
+            const ULOW &t = t1 >> QUORTER_WIDTH;
+            const ULOW &t21 = x_low * y_high;
+            const ULOW &q = t21 >> QUORTER_WIDTH;
+            const ULOW &p = t21 & MASK;
+            const ULOW &t22 = x_high * y_low;
+            const ULOW &s = t22 >> QUORTER_WIDTH;
+            const ULOW &r = t22 & MASK;
+            const ULOW &t3 = x_high * y_high;
             U128 result{t1};
-            const ULOW& div = (q + s) + ((p + r + t) >> QUORTER_WIDTH);
+            const ULOW &div = (q + s) + ((p + r + t) >> QUORTER_WIDTH);
             const auto &p1 = t21 << QUORTER_WIDTH;
             const auto &p2 = t22 << QUORTER_WIDTH;
-            const ULOW& mod = p1 + p2;
+            const ULOW &mod = p1 + p2;
             result.mLow += mod;
             result.mHigh += div;
             result.mHigh += t3;
@@ -631,6 +631,19 @@ namespace bignum::u128
          * @brief Старшая половина числа.
          */
         ULOW mHigh{0};
+
+        /**
+         * @brief Вычисляет 2^64 / x, частное Q и остаток R.
+         */
+        static std::pair<ULOW, ULOW> reciprocal_and_extend(ULOW x)
+        {
+            const auto x_old = x;
+            const auto i = std::countl_zero(x());
+            x <<= i;
+            const auto& R = (-x) % x_old;
+            const auto& Q = (ULOW{1} << i) + (-x) / x_old;
+            return {Q, R};
+        }
     };
 
 }

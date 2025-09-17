@@ -54,6 +54,16 @@ namespace low64
             return result;
         }
 
+        /**
+         * @brief Оператор минус.
+         */
+        ULOW operator-() const
+        {
+            ULOW result = *this;
+            result.mValue = -result.mValue;
+            return result;
+        }
+
         ULOW operator<<(uint32_t shift) const
         {
             ULOW result = *this;

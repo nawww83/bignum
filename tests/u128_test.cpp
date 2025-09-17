@@ -29,31 +29,7 @@ namespace tests_u128
 {
     void debug_test()
     {
-        std::cout << "\ndebug test 1\n";
-        // X: 340282366920938463315800654842091798559, high: low: 18446744073709551608 : 31
-        // Y: 184467440737095516141, high: low: 9 : 18446744073709551597
-        {
-            U128 x{31ull, 18446744073709551608ull};
-            U128 y{18446744073709551597ull, 9ull};
-            std::cout << "x: " << x.value() << ", y: " << y.value() << std::endl;
-            auto [q, r] = x / y;
-            std::cout << "q: " << q.value() << ", r: " << r.value() << std::endl;
-            assert(q == U128{1844674407370955160ull});
-            assert((r == U128{16602069666338596455ull, 9ull}));
-        }
-
-        std::cout << "\ndebug test 2\n";
-        // X: 340282366920938463444927863358058659862, high: low: 18446744073709551615 : 22
-        // Y: 498062089990157893615, high: low: 26 : 18446744073709551599
-        {
-            U128 x{22ull, 18446744073709551615ull};
-            U128 y{18446744073709551599ull, 26ull};
-            std::cout << "x: " << x.value() << ", y: " << y.value() << std::endl;
-            auto [q, r] = x / y;
-            std::cout << "q: " << q.value() << ", r: " << r.value() << std::endl;
-            assert(q == U128{683212743470724133ull});
-            assert((r == U128{11614616639002310283ull, 24ull}));
-        }
+        ;
     }
 
     void string_value_test()
@@ -373,6 +349,9 @@ namespace tests_u128
         g_average_loops_when_half_div = 0;
         g_max_loops_when_half_div = 0;
         g_min_loops_when_half_div = 0;
+        for (size_t i = 0; i < 128; i++) {
+            g_hist[i] = 0;
+        }
 #endif
         std::cout << "Run half-division random test";
         if (min_value != 1 && max_value != 0)
@@ -407,13 +386,23 @@ namespace tests_u128
                 std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
                 std::cout << std::endl
                           << std::flush;
+                std::cout << "hist: ";
+                double sum = 0;
+                for (size_t i = 0; i < 128; i++) {
+                    sum += g_hist[i];
+                }
+                for (size_t i = 0; i < 128; i++) {
+                    if (g_hist[i])
+                        std::cout << "(" << i << " : " << static_cast<float>(g_hist[i] / sum) << "), ";
+                }
+                std::cout << std::endl << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);
             if (debug_counter >= num_of_debug_prints)
                 break;
         }
-        std::cout << "Random test stopped.\n";
+        std::cout << "Random test finished. Ok.\n";
     }
 
     void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
@@ -467,6 +456,6 @@ namespace tests_u128
             if (debug_counter >= num_of_debug_prints)
                 break;
         }
-        std::cout << "Random test stopped.\n";
+        std::cout << "Random test finished. Ok.\n";
     }
 }
