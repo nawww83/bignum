@@ -15,5 +15,7 @@ namespace tests_i128
 
     void subtraction_test();
 
-    void mulpiplication_test();
+    void multiplication_test();
+
+    void division_test();
 }

@@ -11,8 +11,8 @@ namespace
 
     /***
      * @brief Генератор случайных чисел на отрезке [min_value, max_value].
-     * @details Если минимальное значение в смысле беззнакового числа меньше максимального, то минимальное значение интерпретируется как отрицательное число, 
-     * модуль которого равен этому числу, взятому с отрицательным знаком в смысле оператора "минус" для беззнаковых чисел. Например, переданный интервал [-2ull, 2ull] 
+     * @details Если минимальное значение в смысле беззнакового числа меньше максимального, то минимальное значение интерпретируется как отрицательное число,
+     * модуль которого равен этому числу, взятому с отрицательным знаком в смысле оператора "минус" для беззнаковых чисел. Например, переданный интервал [-2ull, 2ull]
      * будет интерпетирован естественно, хотя вместо этого можно было бы передать интервал [18446744073709551614ull, 2ull], что труднее для восприятия.
      * ! Исключение сделано для сочетания (1, 0) - в этом случае диапазон неограничен.
      */
@@ -29,7 +29,18 @@ namespace tests_u128
 {
     void debug_test()
     {
-        ;
+        {
+            // x = 43906083405423767604026828789696988171
+            // y = 9610011913395277136
+            U128 x{9171173135179088907ull, 2380153550674510179ull};
+            U128 y{9610011913395277136ull};
+            const auto [q, r] = x / y;
+            assert((q == 4568785533368966921ull));
+            assert(r == 8085581240885369915ull);
+            auto [q_, r_] = div_(x, y.low());
+            assert(q_ == q);
+            assert(r_ == r);
+        }
     }
 
     void string_value_test()
@@ -342,14 +353,44 @@ namespace tests_u128
         return num_of_runned_tests;
     }
 
+    void reciprocal_test()
+    {
+        {
+            auto x = ULOW{1};
+            auto [q, r] = reciprocal_and_extend(x);
+            assert((q == 0 && r == 0));
+        }
+        {
+            auto x = ULOW{2};
+            auto [q, r] = reciprocal_and_extend(x);
+            assert((q == ULOW{1ull << 63} && r == 0));
+        }
+        {
+            auto x = ULOW{3};
+            auto [q, r] = reciprocal_and_extend(x);
+            assert((q == 6148914691236517205ull && r == 1));
+        }
+        {
+            auto x = ULOW{-1ull};
+            auto [q, r] = reciprocal_and_extend(x);
+            assert((q == 1 && r == 1));
+        }
+        {
+            auto x = ULOW{-2ull};
+            auto [q, r] = reciprocal_and_extend(x);
+            assert((q == 1 && r == 2));
+        }
+    }
+
     void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
     {
 #ifdef USE_DIV_COUNTERS
         g_all_half_divs = 0;
         g_average_loops_when_half_div = 0;
         g_max_loops_when_half_div = 0;
-        g_min_loops_when_half_div = 0;
-        for (size_t i = 0; i < 128; i++) {
+        g_min_loops_when_half_div = 128;
+        for (size_t i = 0; i < 128; i++)
+        {
             g_hist[i] = 0;
         }
 #endif
@@ -357,9 +398,9 @@ namespace tests_u128
         if (min_value != 1 && max_value != 0)
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
-            std::cout << std::endl;
+            std::cout << ": any value." << std::endl;
         uint64_t counter = 0;
-        int debug_counter = 0;
+        int part_counter = 0;
         for (;;)
         {
             counter++;
@@ -368,6 +409,7 @@ namespace tests_u128
             if (y == ULOW{0})
                 continue;
             const auto &[q, r] = x / y;
+            // const auto &[q, r] = div_(x, y); // Альтернативный алгоритм.
             const auto &x_restored = q * y + r;
             const bool is_rem_ok = r < U128{y};
             const bool equality = x_restored == x;
@@ -378,31 +420,47 @@ namespace tests_u128
             }
             if ((counter % (1024ull * 65536ull)) == 0)
             {
-                debug_counter++;
-                std::cout << "ok: counter: " << counter << "; " << debug_counter << " from: " << num_of_debug_prints << ";";
+                part_counter++;
+                std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_debug_prints << ";";
 #ifdef USE_DIV_COUNTERS
                 std::cout << " loops per division: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
 #endif
-                std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
-                std::cout << std::endl
-                          << std::flush;
-                std::cout << "hist: ";
+                // std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
+                // std::cout << std::endl
+                //   << std::flush;
+                std::cout << "\thist: ";
                 double sum = 0;
-                for (size_t i = 0; i < 128; i++) {
+                for (size_t i = 0; i < 128; i++)
+                {
                     sum += g_hist[i];
                 }
-                for (size_t i = 0; i < 128; i++) {
+                bool was_opened = false;
+                bool was_closed = false;
+                for (size_t i = 0; i < 128; i++)
+                {
+                    if (i > 0 && was_opened)
+                    {
+                        std::cout << ")";
+                        was_closed = true;
+                        was_opened = false;
+                    }
                     if (g_hist[i])
-                        std::cout << "(" << i << " : " << static_cast<float>(g_hist[i] / sum) << "), ";
+                    {
+                        std::cout << (was_closed ? ", " : "") << "(" << i << " : " << static_cast<float>(g_hist[i] / sum);
+                        was_opened = true;
+                        was_closed = false;
+                    }
                 }
-                std::cout << std::endl << std::flush;
+                std::cout << ".";
+                std::cout << std::endl
+                          << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);
-            if (debug_counter >= num_of_debug_prints)
+            if (part_counter >= num_of_debug_prints)
                 break;
         }
-        std::cout << "Random test finished. Ok.\n";
+        std::cout << "Random test finished. Ok.\n\n";
     }
 
     void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
@@ -415,15 +473,19 @@ namespace tests_u128
         g_all_divs = 0;
         g_average_loops_when_div = 0;
         g_max_loops_when_div = 0;
-        g_min_loops_when_div = 0;
+        g_min_loops_when_div = 128;
+        for (size_t i = 0; i < 128; i++)
+        {
+            g_hist[i] = 0;
+        }
 #endif
         std::cout << "Run full division random test";
         if (min_value != 1 && max_value != 0)
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
-            std::cout << std::endl;
+            std::cout << ": any value." << std::endl;
         uint64_t counter = 0;
-        int debug_counter = 0;
+        int part_counter = 0;
         for (;;)
         {
             counter++;
@@ -442,20 +504,46 @@ namespace tests_u128
             }
             if ((counter % (1024ull * 65536ull)) == 0)
             {
-                debug_counter++;
-                std::cout << "ok: counter: " << counter << "; " << debug_counter << " from: " << num_of_debug_prints << ";";
+                part_counter++;
+                std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_debug_prints << ";";
 #ifdef USE_DIV_COUNTERS
                 std::cout << " loops per division: full div: ave: " << g_average_loops_when_div << ", min: " << g_min_loops_when_div << ", max: " << g_max_loops_when_div << ", half div: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
 #endif
-                std::cout << "\tlast x // y = " << x.value() << " // " << y.value() << " = " << q.value() << ", remainder = " << r.value();
+                // std::cout << "\tlast x // y = " << x.value() << " // " << y.value() << " = " << q.value() << ", remainder = " << r.value();
+                // std::cout << std::endl
+                //   << std::flush;
+                std::cout << "\thist: ";
+                double sum = 0;
+                for (size_t i = 0; i < 128; i++)
+                {
+                    sum += g_hist[i];
+                }
+                bool was_opened = false;
+                bool was_closed = false;
+                for (size_t i = 0; i < 128; i++)
+                {
+                    if (i > 0 && was_opened)
+                    {
+                        std::cout << ")";
+                        was_closed = true;
+                        was_opened = false;
+                    }
+                    if (g_hist[i])
+                    {
+                        std::cout << (was_closed ? ", " : "") << "(" << i << " : " << static_cast<float>(g_hist[i] / sum);
+                        was_opened = true;
+                        was_closed = false;
+                    }
+                }
+                std::cout << ".";
                 std::cout << std::endl
                           << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);
-            if (debug_counter >= num_of_debug_prints)
+            if (part_counter >= num_of_debug_prints)
                 break;
         }
-        std::cout << "Random test finished. Ok.\n";
+        std::cout << "Random test finished. Ok.\n\n";
     }
 }

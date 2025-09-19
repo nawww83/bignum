@@ -385,45 +385,52 @@ namespace bignum::u128
         /**
          * @brief Половинчатый оператор полного деления.
          * @details Авторский метод итеративного деления "широкого" числа на "узкое".
-         * Требует тестирования.
+         * Количество итераций: [0, 64], наиболее вероятное количество - 15...16, среднее - около 25...26.
          * @return Частное от деления Q и остаток R.
          */
-        std::pair<U128, U128> operator/(const ULOW &Y) const
+        std::pair<U128, ULOW> operator/(const ULOW &Y) const
         {
             assert(Y != 0);
-            U128 X = *this;
-            if (Y == ULOW{1}) {
-                return {X, U128{0}};
-            }
-            U128 Q{0};
-            ULOW R = 0;
-            const auto& rcp = reciprocal_and_extend(Y);
-            // std::cout << "reciprocal: q, r: " << rcp.first() << ", " << rcp.second() << std::endl;
-            auto iteration = [&X, &Q, &R, Y, &rcp]() {
-                // const auto& [u, v] = mult64(X.high(), rcp.first);
-                // std::cout << "u, v: " << u() << ", " << v() << std::endl;
-                Q += mult64(X.high(), rcp.first);
-                Q += U128{X.low() / Y};
-                R += X.low() % Y;
-                Q += U128{R / Y};
-                R %= Y;
-                // std::cout << "Q, R: " << Q.value() << ", " << R() << std::endl;
-                X = mult64(X.high(), rcp.second);
-            };
-            while (X != U128{0})
+            const U128 &x = *this;
+            ULOW Q = x.high() / Y;
+            ULOW R = x.high() % Y;
+            const auto &reciprocal_y = AllUnits() / Y;
+            ULOW N = R * reciprocal_y + (x.low() / Y);
+            U128 result{N, Q};
+            U128 E = x - result * Y; // Остаток от деления.
+#ifdef USE_DIV_COUNTERS
+            g_all_half_divs++;
+            double loops = 0;
+#endif
+            for (;;)
             {
-                iteration();
-                // std::cout << "X: " << X.value() << std::endl;
+#ifdef USE_DIV_COUNTERS
+                loops++;
+                assert(loops < 128);
+#endif
+                Q = E.high() / Y;
+                R = E.high() % Y;
+                N = R * reciprocal_y + (E.low() / Y);
+                result += U128{N, Q};
+                E -= U128{N, Q} * Y;
+                if (E < Y)
+                    break;
             }
-            return {Q, R};
+#ifdef USE_DIV_COUNTERS
+            g_hist[static_cast<uint64_t>(loops)]++;
+            g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
+            g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
+            g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
+#endif
+            return std::make_pair(result, E.low());
         }
 
         /**
          *
          */
-        std::pair<U128, U128> operator/=(const ULOW &Y)
+        std::pair<U128, ULOW> operator/=(const ULOW &Y)
         {
-            U128 remainder;
+            ULOW remainder;
             std::tie(*this, remainder) = *this / Y;
             return std::make_pair(*this, remainder);
         }
@@ -441,8 +448,8 @@ namespace bignum::u128
             const U128 &Y = other;
             if (Y.mHigh == 0)
             {
-                auto result = X / Y.mLow;
-                return result;
+                const auto& result = X / Y.mLow;
+                return {result.first, U128{result.second}};
             }
             constexpr auto MAX_ULOW = AllUnits();
             const ULOW &Q = X.mHigh / Y.mHigh;
@@ -469,31 +476,22 @@ namespace bignum::u128
             U128 Error{X - N};
             const bool negative_sign_2 = X < N;
             const auto Error_old = Error;
-            if (negative_sign_2)
+            while (Error >= Y)
             {
-                while (Error >= Y)
-                {
 #ifdef USE_DIV_COUNTERS
-                    loops++;
-                    assert(loops < 128);
+                loops++;
+                assert(loops < 128);
 #endif
+                if (negative_sign_2) {
                     result.dec();
                     Error += Y;
-                }
-            }
-            else
-            {
-                while (Error >= Y)
-                {
-#ifdef USE_DIV_COUNTERS
-                    loops++;
-                    assert(loops < 128);
-#endif
+                } else {
                     result.inc();
                     Error -= Y;
                 }
             }
 #ifdef USE_DIV_COUNTERS
+            g_hist[static_cast<uint64_t>(loops)]++;
             g_average_loops_when_div += (loops - g_average_loops_when_div) / g_all_divs;
             g_max_loops_when_div = std::max(g_max_loops_when_div, loops);
             g_min_loops_when_div = std::min(g_min_loops_when_div, loops);
@@ -631,19 +629,83 @@ namespace bignum::u128
          * @brief Старшая половина числа.
          */
         ULOW mHigh{0};
-
-        /**
-         * @brief Вычисляет 2^64 / x, частное Q и остаток R.
-         */
-        static std::pair<ULOW, ULOW> reciprocal_and_extend(ULOW x)
-        {
-            const auto x_old = x;
-            const auto i = std::countl_zero(x());
-            x <<= i;
-            const auto& R = (-x) % x_old;
-            const auto& Q = (ULOW{1} << i) + (-x) / x_old;
-            return {Q, R};
-        }
     };
+
+    /**
+     * @brief r = (r + delta) mod m
+     * Возвращает 1, если остаток при сложении был больше или равен модулю m; иначе возвращает ноль.
+     * @param r_rec = 2^64 mod m.
+     */
+    inline ULOW smart_remainder_adder(ULOW &r, const ULOW &delta, const ULOW &m, const ULOW &r_rec)
+    {
+        const auto &summ = U128{r} + U128{delta % m};
+        bool overflow = summ.high() != 0;
+        if (overflow)
+        {
+            r = (summ.low() + r_rec * summ.high()) % m;
+            return 1ull;
+        }
+        else
+        {
+            r = summ.low() % m;
+            return summ.low() >= m ? 1ull : 0ull;
+        }
+    }
+
+    /**
+     * @brief Вычисляет 2^64 / x, частное Q и остаток R.
+     */
+    inline std::pair<ULOW, ULOW> reciprocal_and_extend(ULOW x)
+    {
+        assert(x != 0);
+        const auto x_old = x;
+        const auto i = std::countl_zero(x());
+        x <<= i;
+        const auto &R = (-x) % x_old;
+        const auto &Q = (ULOW{1} << i) + (-x) / x_old;
+        return {Q, R};
+    }
+
+    /**
+     * @brief Альтернативный алгоритм деления "широкого" числа на "узкое".
+     */
+    inline std::pair<U128, ULOW> div_(U128 X, const ULOW &Y)
+    {
+        assert(Y != 0);
+        if (Y == ULOW{1})
+        {
+            return {X, 0};
+        }
+#ifdef USE_DIV_COUNTERS
+        g_all_half_divs++;
+        double loops = 0;
+#endif
+        U128 Q{0};
+        ULOW R = 0;
+        const auto &rcp = reciprocal_and_extend(Y);
+        auto iteration = [&Q, &R, Y, &rcp](U128 &x)
+        {
+            Q += x.high() != 0ull ? U128::mult64(x.high(), rcp.first) : 0ull;
+            Q += U128{x.low() / Y};
+            const auto carry = smart_remainder_adder(R, x.low(), Y, rcp.second);
+            Q += carry;
+            x = x.high() != 0ull ? U128::mult64(x.high(), rcp.second) : 0ull;
+        };
+        while (X != U128{0})
+        {
+#ifdef USE_DIV_COUNTERS
+            loops++;
+            assert(loops < 128);
+#endif
+            iteration(X);
+        }
+#ifdef USE_DIV_COUNTERS
+        g_hist[static_cast<uint64_t>(loops)]++;
+        g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
+        g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
+        g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
+#endif
+        return {Q, R};
+    }
 
 }

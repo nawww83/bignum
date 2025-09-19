@@ -387,7 +387,7 @@ namespace bignum::i128
         /**
          * @brief Знак минус.
          */
-        I128 operator-()
+        I128 operator-() const
         {
             I128 result = *this;
             -result.mSign;
@@ -397,9 +397,10 @@ namespace bignum::i128
         /**
          * @brief
          */
-        I128 operator*(const ULOW& rhs) const
+        I128 operator*(const ULOW &rhs) const
         {
             const I128 &X = *this;
+            const ULOW &Y = rhs;
             if (X.is_overflow())
             {
                 I128 result;
@@ -412,12 +413,8 @@ namespace bignum::i128
                 result.set_nan();
                 return result;
             }
-            if (X.is_zero())
-                return I128{0};
-            if (rhs() == 0)
-                return I128{0};
-            I128 result{U128::mult64(X.mUnsigned.low(), rhs)};
-            I128 tmp{U128::mult64(X.mUnsigned.high(), rhs)};
+            I128 result{U128::mult64(X.mUnsigned.low(), Y)};
+            I128 tmp{U128::mult64(X.mUnsigned.high(), Y)};
             result += shl64(tmp);
             result.mSign = X.mSign();
             return result;
@@ -429,28 +426,87 @@ namespace bignum::i128
         I128 operator*(const I128 &rhs) const
         {
             const I128 &X = *this;
-            if (X.is_overflow() || rhs.is_overflow())
+            const I128 &Y = rhs;
+            if (X.is_overflow() || Y.is_overflow())
             {
                 I128 result;
                 result.set_overflow();
                 return result;
             }
-            if (X.is_nan() || rhs.is_nan())
+            if (X.is_nan() || Y.is_nan())
             {
                 I128 result;
                 result.set_nan();
                 return result;
             }
-            if (X.is_zero())
-                return I128{0};
-            if (rhs.is_zero())
-                return I128{0};
-            I128 result = X * rhs.mUnsigned.low();
+            I128 result = X * Y.mUnsigned.low();
             if (result.is_singular())
                 return result;
-            result.mSign = X.mSign ^ rhs.mSign;
-            result += shl64(X * rhs.mUnsigned.high());
+            result.mSign = X.mSign ^ Y.mSign;
+            result += shl64(X * Y.mUnsigned.high());
             return result;
+        }
+
+        /**
+         * @brief
+         */
+        std::pair<I128, ULOW> operator/(const ULOW &rhs) const
+        {
+            assert(rhs != 0);
+            const I128 &X = *this;
+            const ULOW &Y = rhs;
+            if (X.is_overflow())
+            {
+                I128 result;
+                result.set_overflow();
+                return {result, 0};
+            }
+            if (X.is_nan())
+            {
+                I128 result;
+                result.set_nan();
+                return {result, 0};
+            }
+            auto [q, r] = X.mUnsigned / Y;
+            auto Q = I128{q, X.mSign};
+            auto R = X - Q * Y;
+            if (R.is_negative())
+            {
+                R += I128{Y};
+                Q -= I128{1};
+            }
+            return {Q, R.mUnsigned.low()};
+        }
+
+        /**
+         * @brief
+         */
+        std::pair<I128, I128> operator/(const I128 &rhs) const
+        {
+            assert(!rhs.is_zero());
+            const I128 &X = *this;
+            const I128 &Y = rhs;
+            if (X.is_overflow() || Y.is_overflow())
+            {
+                I128 result;
+                result.set_overflow();
+                return {result, 0};
+            }
+            if (X.is_nan() || Y.is_nan())
+            {
+                I128 result;
+                result.set_nan();
+                return {result, 0};
+            }
+            auto [q, r] = X.mUnsigned / Y.mUnsigned;
+            auto Q = I128{q, X.mSign ^ Y.mSign};
+            auto R = X - Q * Y;
+            if (!R.is_zero() && (R.mSign ^ Y.mSign)())
+            {
+                R += I128{Y};
+                Q -= I128{1};
+            }
+            return {Q, R};
         }
 
         /**
