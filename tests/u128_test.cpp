@@ -1,6 +1,7 @@
 #include <cassert>
 #include <random>
 #include <iostream>
+#include "../defines.h"
 #include "../u128.hpp"
 
 using namespace bignum::u128;
@@ -382,7 +383,7 @@ namespace tests_u128
         }
     }
 
-    void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
+    void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part)
     {
 #ifdef USE_DIV_COUNTERS
         g_all_half_divs = 0;
@@ -398,7 +399,8 @@ namespace tests_u128
         if (min_value != 1 && max_value != 0)
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
-            std::cout << ": any value." << std::endl;
+            std::cout << ": any values." << std::endl;
+        std::cout << "..." << std::flush;
         uint64_t counter = 0;
         int part_counter = 0;
         for (;;)
@@ -418,16 +420,17 @@ namespace tests_u128
                 std::cout << "x: " << x.value() << std::endl;
                 std::cout << "y: " << y() << std::endl;
             }
-            if ((counter % (1024ull * 65536ull)) == 0)
+            if ((counter % number_of_iterations_per_part) == 0)
             {
                 part_counter++;
-                std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_debug_prints << ";";
+                std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_parts << std::endl;
 #ifdef USE_DIV_COUNTERS
                 std::cout << " loops per division: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
 #endif
-                // std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
-                // std::cout << std::endl
-                //   << std::flush;
+// std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
+// std::cout << std::endl
+//   << std::flush;
+#ifdef USE_DIV_COUNTERS
                 std::cout << "\thist: ";
                 double sum = 0;
                 for (size_t i = 0; i < 128; i++)
@@ -454,16 +457,17 @@ namespace tests_u128
                 std::cout << ".";
                 std::cout << std::endl
                           << std::flush;
+#endif
             }
             assert(is_rem_ok);
             assert(equality);
-            if (part_counter >= num_of_debug_prints)
+            if (part_counter >= num_of_parts)
                 break;
         }
-        std::cout << "Random test finished. Ok.\n\n";
+        std::cout << "Random test finished. Ok!\n\n";
     }
 
-    void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints)
+    void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part)
     {
 #ifdef USE_DIV_COUNTERS
         g_all_half_divs = 0;
@@ -483,7 +487,8 @@ namespace tests_u128
         if (min_value != 1 && max_value != 0)
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
-            std::cout << ": any value." << std::endl;
+            std::cout << ": any values." << std::endl;
+        std::cout << "..." << std::flush;
         uint64_t counter = 0;
         int part_counter = 0;
         for (;;)
@@ -502,16 +507,17 @@ namespace tests_u128
                 std::cout << "x: " << x.value() << std::endl;
                 std::cout << "y: " << y.value() << std::endl;
             }
-            if ((counter % (1024ull * 65536ull)) == 0)
+            if ((counter % number_of_iterations_per_part) == 0)
             {
                 part_counter++;
-                std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_debug_prints << ";";
+                std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_parts << std::endl;
 #ifdef USE_DIV_COUNTERS
                 std::cout << " loops per division: full div: ave: " << g_average_loops_when_div << ", min: " << g_min_loops_when_div << ", max: " << g_max_loops_when_div << ", half div: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
 #endif
-                // std::cout << "\tlast x // y = " << x.value() << " // " << y.value() << " = " << q.value() << ", remainder = " << r.value();
-                // std::cout << std::endl
-                //   << std::flush;
+// std::cout << "\tlast x // y = " << x.value() << " // " << y.value() << " = " << q.value() << ", remainder = " << r.value();
+// std::cout << std::endl
+//   << std::flush;
+#ifdef USE_DIV_COUNTERS
                 std::cout << "\thist: ";
                 double sum = 0;
                 for (size_t i = 0; i < 128; i++)
@@ -538,12 +544,13 @@ namespace tests_u128
                 std::cout << ".";
                 std::cout << std::endl
                           << std::flush;
+#endif
             }
             assert(is_rem_ok);
             assert(equality);
-            if (part_counter >= num_of_debug_prints)
+            if (part_counter >= num_of_parts)
                 break;
         }
-        std::cout << "Random test finished. Ok.\n\n";
+        std::cout << "Random test finished. Ok!\n\n";
     }
 }

@@ -4,13 +4,35 @@
 
 using namespace bignum::i128;
 
-
 namespace tests_i128
 {
     void debug_test()
     {
-        I128 x;
-        std::cout << "Sizeof I128 = " << sizeof(x) << std::endl;
+        ;
+    }
+
+    void string_value_test()
+    {
+        {
+            I128 x{1};
+            const auto &x_str = x.value();
+            assert(x_str == "1");
+        }
+        {
+            auto x = -I128{1};
+            const auto &x_str = x.value();
+            assert(x_str == "-1");
+        }
+        {
+            auto x = -I128{0};
+            const auto &x_str = x.value();
+            assert(x_str == "0");
+        }
+        {
+            auto x = -I128{0, 1};
+            const auto &x_str = x.value();
+            assert(x_str == "-18446744073709551616");
+        }
     }
 
     void cmp_operator_test()
@@ -250,42 +272,42 @@ namespace tests_i128
         {
             I128 x{U128{555}};
             ULOW y{1};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{555ull});
             assert(r == 0);
         }
         {
             I128 x{U128{555}, Sign{true}};
             ULOW y{1};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{555ull});
             assert(r == 0);
         }
         {
             I128 x{U128{555}};
             ULOW y{7};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{79ull});
             assert(r == 2ull);
         }
         {
             I128 x{U128{555}, Sign{true}};
             ULOW y{7};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{80ull});
             assert(r == 5ull);
         }
         {
             I128 x{U128{444}};
             ULOW y{2};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{222ull});
             assert(r == 0);
         }
         {
             I128 x{U128{444}, Sign{true}};
             ULOW y{2};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{222ull});
             assert(r == 0);
         }
@@ -293,70 +315,105 @@ namespace tests_i128
         {
             I128 x{U128{555}, Sign{true}};
             I128 y{U128{1}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{555ull});
             assert(r == I128{0});
         }
         {
             I128 x{U128{555}};
             I128 y{U128{1}, Sign{true}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{555ull});
+            assert(r == I128{0});
+        }
+        {
+            I128 x{U128{555}, Sign{true}};
+            I128 y{U128{1}, Sign{true}};
+            const auto &[q, r] = x / y;
+            assert(q == I128{555ull});
             assert(r == I128{0});
         }
         {
             I128 x{U128{555}};
             I128 y{U128{7}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{79ull});
             assert(r == I128{2ull});
         }
         {
             I128 x{U128{555}, Sign{true}};
             I128 y{U128{7}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{80ull});
             assert(r == I128{5ull});
         }
         {
             I128 x{U128{555}};
             I128 y{U128{7}, Sign{true}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{80ull});
             assert(r == -I128{5ull});
         }
         {
             I128 x{U128{555}, Sign{true}};
             I128 y{U128{7}, Sign{true}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{79ull});
             assert(r == -I128{2ull});
         }
         {
+            I128 x{U128{5}};
+            I128 y{U128{7}};
+            const auto &[q, r] = x / y;
+            assert(q == I128{0});
+            assert(r == I128{5ull});
+        }
+        {
+            I128 x{U128{5}, Sign{true}};
+            I128 y{U128{7}};
+            const auto &[q, r] = x / y;
+            assert(q == -I128{1ull});
+            assert(r == I128{2ull});
+        }
+        {
+            I128 x{U128{5}};
+            I128 y{U128{7}, Sign{true}};
+            const auto &[q, r] = x / y;
+            assert(q == -I128{1ull});
+            assert(r == -I128{2ull});
+        }
+        {
+            I128 x{U128{5}, Sign{true}};
+            I128 y{U128{7}, Sign{true}};
+            const auto &[q, r] = x / y;
+            assert(q == I128{0});
+            assert(r == -I128{5ull});
+        }
+        {
             I128 x{U128{444}};
             I128 y{U128{2}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{222ull});
             assert(r == I128{0});
         }
         {
             I128 x{U128{444}, Sign{true}};
             I128 y{U128{2}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{222ull});
             assert(r == I128{0});
         }
         {
             I128 x{U128{444}};
             I128 y{U128{2}, Sign{true}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == -I128{222ull});
             assert(r == I128{0});
         }
         {
             I128 x{U128{444}, Sign{true}};
             I128 y{U128{2}, Sign{true}};
-            const auto& [q, r] = x / y;
+            const auto &[q, r] = x / y;
             assert(q == I128{222ull});
             assert(r == I128{0});
         }

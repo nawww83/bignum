@@ -33,7 +33,7 @@ namespace tests_u128
 
     void reciprocal_test();
 
-    void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints);
+    void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part);
 
-    void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_debug_prints);
+    void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part);
 }

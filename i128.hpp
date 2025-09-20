@@ -8,6 +8,7 @@
 #include "sign.hpp"     // Sign
 #include "singular.hpp" // Singular
 #include "ulow.hpp"     // low64::ULOW
+#include "defines.h"
 
 #pragma once
 
@@ -322,7 +323,7 @@ namespace bignum::i128
         }
 
         /**
-         * @brief
+         * @brief Оператор вычитания.
          */
         I128 operator-(const I128 &rhs) const
         {
@@ -376,7 +377,7 @@ namespace bignum::i128
         }
 
         /**
-         * @brief
+         * @brief Оператор вычитания.
          */
         I128 &operator-=(const I128 &other)
         {
@@ -395,7 +396,7 @@ namespace bignum::i128
         }
 
         /**
-         * @brief
+         * @brief Оператор половинчатого умножения.
          */
         I128 operator*(const ULOW &rhs) const
         {
@@ -421,7 +422,7 @@ namespace bignum::i128
         }
 
         /**
-         * @brief
+         * @brief Оператор умножения.
          */
         I128 operator*(const I128 &rhs) const
         {
@@ -448,7 +449,7 @@ namespace bignum::i128
         }
 
         /**
-         * @brief
+         * @brief Оператор половинчатого деления.
          */
         std::pair<I128, ULOW> operator/(const ULOW &rhs) const
         {
@@ -479,7 +480,7 @@ namespace bignum::i128
         }
 
         /**
-         * @brief
+         * @brief Оператор деления.
          */
         std::pair<I128, I128> operator/(const I128 &rhs) const
         {
@@ -519,6 +520,28 @@ namespace bignum::i128
             if (x.mUnsigned >= U128{0, 1} && !x.is_singular())
                 result.set_overflow();
             return result;
+        }
+
+        /**
+         * @brief Возвращает строковое представление числа.
+         */
+        std::string value() const
+        {
+            std::string result;
+            U128 X = this->mUnsigned;
+            while (X != U128{0})
+            {
+                const int d = X.mod10();
+                if (d < 0)
+                    return result;
+                result.push_back(DIGITS[d]);
+                X = X.div10();
+            }
+            if (!result.empty() && this->mSign()) {
+                result.push_back('-');
+            }
+            std::reverse(result.begin(), result.end());
+            return !result.empty() ? result : "0";
         }
 
     private:

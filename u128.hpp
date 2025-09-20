@@ -13,12 +13,7 @@
 #include <tuple>     // std::pair, std::tie
 #include <bit>       // std::countl_zero
 #include "ulow.hpp"  // low64::ULOW
-
-/**
- * @brief Использовать счетчики для проверки количества итераций операции деления.
- */
-// #undef USE_DIV_COUNTERS
-#define USE_DIV_COUNTERS
+#include "defines.h"
 
 namespace bignum::u128
 {
@@ -54,11 +49,6 @@ namespace bignum::u128
     {
         return ULOW{-1ull};
     }
-
-    /**
-     * Массив для формирования цифр по индексам.
-     */
-    constexpr char DIGITS[10]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
     /**
      * Класс для арифметики 128-битных беззнаковых целых чисел, основанный на половинчатом представлении числа.
@@ -383,7 +373,7 @@ namespace bignum::u128
         }
 
         /**
-         * @brief Половинчатый оператор полного деления.
+         * @brief Оператор половинчатого деления.
          * @details Авторский метод итеративного деления "широкого" числа на "узкое".
          * Количество итераций: [0, 64], наиболее вероятное количество - 15...16, среднее - около 25...26.
          * @return Частное от деления Q и остаток R.
@@ -391,18 +381,18 @@ namespace bignum::u128
         std::pair<U128, ULOW> operator/(const ULOW &Y) const
         {
             assert(Y != 0);
-            const U128 &x = *this;
-            ULOW Q = x.high() / Y;
-            ULOW R = x.high() % Y;
+            const U128 &X = *this;
+            ULOW Q = X.high() / Y;
+            ULOW R = X.high() % Y;
             const auto &reciprocal_y = AllUnits() / Y;
-            ULOW N = R * reciprocal_y + (x.low() / Y);
+            ULOW N = R * reciprocal_y + (X.low() / Y);
             U128 result{N, Q};
-            U128 E = x - result * Y; // Остаток от деления.
 #ifdef USE_DIV_COUNTERS
             g_all_half_divs++;
             double loops = 0;
 #endif
-            for (;;)
+            U128 E{X - result * Y};
+            for (; E >= Y; E -= U128{N, Q} * Y)
             {
 #ifdef USE_DIV_COUNTERS
                 loops++;
@@ -412,9 +402,6 @@ namespace bignum::u128
                 R = E.high() % Y;
                 N = R * reciprocal_y + (E.low() / Y);
                 result += U128{N, Q};
-                E -= U128{N, Q} * Y;
-                if (E < Y)
-                    break;
             }
 #ifdef USE_DIV_COUNTERS
             g_hist[static_cast<uint64_t>(loops)]++;
@@ -426,7 +413,7 @@ namespace bignum::u128
         }
 
         /**
-         *
+         * @brief
          */
         std::pair<U128, ULOW> operator/=(const ULOW &Y)
         {
@@ -436,7 +423,7 @@ namespace bignum::u128
         }
 
         /**
-         * @brief Оператор полного деления.
+         * @brief Оператор деления.
          * @details Авторский метод деления двух "широких" чисел, состоящих из двух половинок - "узких" чисел.
          * Отсутствует "раскачка" алгоритма для "плохих" случаев деления: (A*w + B)/(1*w + D).
          * @return Частное от деления и остаток.
@@ -448,7 +435,7 @@ namespace bignum::u128
             const U128 &Y = other;
             if (Y.mHigh == 0)
             {
-                const auto& result = X / Y.mLow;
+                const auto &result = X / Y.mLow;
                 return {result.first, U128{result.second}};
             }
             constexpr auto MAX_ULOW = AllUnits();
@@ -471,21 +458,23 @@ namespace bignum::u128
             std::tie(Quotient, std::ignore) = Quotient / C1;
             if (negative_sign_1)
                 Quotient = (U128::get_max_value() - Quotient) + U128{1};
-            U128 result = U128{Q} + Quotient - (negative_sign_1 ? U128{1} : U128{0});
+            U128 result = U128{Q} + Quotient - U128{negative_sign_1 ? 1ull : 0ull};
             const U128 &N = Y * result.mLow;
             U128 Error{X - N};
             const bool negative_sign_2 = X < N;
-            const auto Error_old = Error;
             while (Error >= Y)
             {
 #ifdef USE_DIV_COUNTERS
                 loops++;
                 assert(loops < 128);
 #endif
-                if (negative_sign_2) {
+                if (negative_sign_2)
+                {
                     result.dec();
                     Error += Y;
-                } else {
+                }
+                else
+                {
                     result.inc();
                     Error -= Y;
                 }
@@ -510,7 +499,7 @@ namespace bignum::u128
         }
 
         /**
-         * @brief
+         * @brief Нижняя половина числа.
          */
         ULOW low() const
         {
@@ -518,7 +507,7 @@ namespace bignum::u128
         }
 
         /**
-         * @brief
+         * @brief Верхняя половина числа.
          */
         ULOW high() const
         {
@@ -535,7 +524,7 @@ namespace bignum::u128
 
         /**
          * @brief Умножение двух 64-битных чисел с расширением до 128-битного числа.
-         * @details Авторский алгоритм умножения.
+         * @details Авторский алгоритм умножения. Обобщается на любую разрядность.
          */
         static U128 mult64(ULOW x, ULOW y)
         {
@@ -572,21 +561,17 @@ namespace bignum::u128
         {
             const U128 &X = *this;
             constexpr auto TEN = ULOW{10};
+            const auto reciprocal = AllUnits() / TEN;
             ULOW Q = X.mHigh / TEN;
             ULOW R = X.mHigh % TEN;
-            constexpr auto MAX_ULOW = AllUnits();
-            ULOW N = R * (MAX_ULOW / TEN) + (X.mLow / TEN);
+            ULOW N = R * reciprocal + (X.mLow / TEN);
             U128 result{N, Q};
-            const U128 &tmp = result * TEN;
-            U128 E{X - tmp};
-            while (E.mHigh != 0 || E.mLow >= TEN)
+            for (U128 E{X - result * TEN}; E >= TEN; E -= U128{N, Q} * TEN)
             {
                 Q = E.mHigh / TEN;
                 R = E.mHigh % TEN;
-                N = R * (MAX_ULOW / TEN) + (E.mLow / TEN);
-                U128 tmp{N, Q};
-                result += tmp;
-                E -= tmp * TEN;
+                N = R * reciprocal + (E.mLow / TEN);
+                result += U128{N, Q};
             }
             return result;
         }
@@ -668,6 +653,7 @@ namespace bignum::u128
 
     /**
      * @brief Альтернативный алгоритм деления "широкого" числа на "узкое".
+     * @brief Дает в среднем 27,5 итераций вместо 25,5 для текущего оператора деления operator/().
      */
     inline std::pair<U128, ULOW> div_(U128 X, const ULOW &Y)
     {
