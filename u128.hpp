@@ -51,6 +51,35 @@ namespace bignum::u128
     }
 
     /**
+     * @brief r = (r + delta) mod m
+     * Возвращает 1, если остаток при сложении был больше или равен модулю m; иначе возвращает ноль.
+     * @param r_rec = 2^64 mod m.
+     */
+    inline ULOW smart_remainder_adder(ULOW &r, ULOW delta, const ULOW &m, const ULOW &r_rec)
+    {
+        assert(m != 0);
+        delta %= m;
+        const ULOW &summ = r + delta;
+        const bool overflow = summ < std::min(r, delta);
+        r = (summ + (overflow ? r_rec : 0ull)) % m;
+        return overflow ? 1ull : (summ >= m ? 1ull : 0ull);
+    }
+
+    /**
+     * @brief Вычисляет 2^64 / x: частное Q и остаток R.
+     */
+    inline std::pair<ULOW, ULOW> reciprocal_and_extend(ULOW x)
+    {
+        assert(x != 0);
+        const auto x_old = x;
+        const auto i = std::countl_zero(x());
+        x <<= i;
+        const auto &R = (-x) % x_old;
+        const auto &Q = (ULOW{1} << i) + (-x) / x_old;
+        return {Q, R};
+    }
+
+    /**
      * Класс для арифметики 128-битных беззнаковых целых чисел, основанный на половинчатом представлении числа.
      */
     class U128
@@ -389,27 +418,53 @@ namespace bignum::u128
         std::pair<U128, ULOW> operator/(const ULOW &Y) const
         {
             assert(Y != 0);
-            const U128 &X = *this;
-            ULOW Q = X.high() / Y;
-            ULOW R = X.high() % Y;
-            const auto &reciprocal_y = AllUnits() / Y;
-            ULOW N = R * reciprocal_y + (X.low() / Y);
-            U128 result{N, Q};
+            U128 X = *this;
+            if (Y == ULOW{1})
+            {
+                return {X, 0};
+            }
 #ifdef USE_DIV_COUNTERS
             g_all_half_divs++;
             double loops = 0;
 #endif
-            U128 E{X - result * Y};
-            for (; E >= Y; E -= U128{N, Q} * Y)
+            U128 Q{0};
+            ULOW R = 0;
+            auto rcp = reciprocal_and_extend(Y);
+            const auto &rcp_compl = Y - rcp.second;
+            const bool make_inverse = rcp_compl < rcp.second; // Для ускорения сходимости.
+            rcp.first += make_inverse ? ULOW{1} : ULOW{0};
+            const auto X_old = X;
+            for (;;)
             {
 #ifdef USE_DIV_COUNTERS
                 loops++;
                 assert(loops < 128);
 #endif
-                Q = E.high() / Y;
-                R = E.high() % Y;
-                N = R * reciprocal_y + (E.low() / Y);
-                result += U128{N, Q};
+                const bool x_has_high = X.high() != 0;
+                Q += x_has_high ? U128::mult64(X.high(), rcp.first) : 0ull;
+                Q += U128{X.low() / Y};
+                const auto& carry = smart_remainder_adder(R, X.low(), Y, rcp.second);
+                Q += carry;
+                X = X.high() != 0ull ? U128::mult64(X.high(), make_inverse ? rcp_compl : rcp.second) : 0ull;
+                if (X == U128{0})
+                {
+                    if (Q > X_old) // Коррекция знака.
+                    {
+                        Q = -Q;
+                        R = Y - R; // mod Y
+                        if (R == Y)
+                        {
+                            Q.inc();
+                            R = 0;
+                        }
+                    }
+                    break;
+                }
+                if (make_inverse)
+                {
+                    Q = -Q;
+                    R = Y - R; // mod Y
+                }
             }
 #ifdef USE_DIV_COUNTERS
             g_hist[static_cast<uint64_t>(loops)]++;
@@ -417,7 +472,7 @@ namespace bignum::u128
             g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
             g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
 #endif
-            return std::make_pair(result, E.low());
+            return {Q, R};
         }
 
         /**
@@ -453,8 +508,8 @@ namespace bignum::u128
             const U128 &DeltaQ = mult64(Delta, Q);
             const U128 &sum_1 = U128{0, R} + DeltaQ;
             U128 W1{sum_1 - U128{0, Q}};
-            const bool negative_sign_1 = sum_1 < U128{0, Q};
-            if (negative_sign_1)
+            const bool make_inverse_1 = sum_1 < U128{0, Q};
+            if (make_inverse_1)
                 W1 = (U128::get_max_value() - W1) + U128{1};
 #ifdef USE_DIV_COUNTERS
             g_all_divs++;
@@ -464,19 +519,19 @@ namespace bignum::u128
             const ULOW &W2 = MAX_ULOW - Delta / C1;
             auto [Quotient, _] = W1 / W2;
             std::tie(Quotient, std::ignore) = Quotient / C1;
-            if (negative_sign_1)
+            if (make_inverse_1)
                 Quotient = (U128::get_max_value() - Quotient) + U128{1};
-            U128 result = U128{Q} + Quotient - U128{negative_sign_1 ? 1ull : 0ull};
+            U128 result = U128{Q} + Quotient - U128{make_inverse_1 ? 1ull : 0ull};
             const U128 &N = Y * result.mLow;
             U128 Error{X - N};
-            const bool negative_sign_2 = X < N;
+            const bool make_inverse_2 = X < N;
             while (Error >= Y)
             {
 #ifdef USE_DIV_COUNTERS
                 loops++;
                 assert(loops < 128);
 #endif
-                if (negative_sign_2)
+                if (make_inverse_2)
                 {
                     result.dec();
                     Error += Y;
@@ -623,122 +678,5 @@ namespace bignum::u128
          */
         ULOW mHigh{0};
     };
-
-    /**
-     * @brief r = (r + delta) mod m
-     * Возвращает 1, если остаток при сложении был больше или равен модулю m; иначе возвращает ноль.
-     * @param r_rec = 2^64 mod m.
-     */
-    inline ULOW smart_remainder_adder(ULOW &r, const ULOW &delta, const ULOW &m, const ULOW &r_rec)
-    {
-        const auto &summ = U128{r} + U128{delta % m};
-        bool overflow = summ.high() != 0;
-        if (overflow)
-        {
-            r = (summ.low() + r_rec * summ.high()) % m;
-            return 1ull;
-        }
-        else
-        {
-            r = summ.low() % m;
-            return summ.low() >= m ? 1ull : 0ull;
-        }
-    }
-
-    /**
-     * @brief r = (r - delta) mod m
-     * Возвращает 1, если остаток вычитании сложении был больше или равен модулю m; иначе возвращает ноль.
-     * @param r_rec = 2^64 mod m.
-     */
-    inline ULOW smart_remainder_subtractor(ULOW &r, const ULOW &delta, const ULOW &m, const ULOW &r_rec)
-    {
-        const auto &summ = U128{r} + U128{delta % m};
-        bool overflow = summ.high() != 0;
-        if (overflow)
-        {
-            r = (summ.low() + r_rec * summ.high()) % m;
-            return 1ull;
-        }
-        else
-        {
-            r = summ.low() % m;
-            return summ.low() >= m ? 1ull : 0ull;
-        }
-    }
-
-    /**
-     * @brief Вычисляет 2^64 / x, частное Q и остаток R.
-     */
-    inline std::pair<ULOW, ULOW> reciprocal_and_extend(ULOW x)
-    {
-        assert(x != 0);
-        const auto x_old = x;
-        const auto i = std::countl_zero(x());
-        x <<= i;
-        const auto &R = (-x) % x_old;
-        const auto &Q = (ULOW{1} << i) + (-x) / x_old;
-        return {Q, R};
-    }
-
-    /**
-     * @brief Альтернативный алгоритм деления "широкого" числа на "узкое".
-     * @brief
-     */
-    inline std::pair<U128, ULOW> div_(U128 X, ULOW Y)
-    {
-        assert(Y != 0);
-        if (Y == ULOW{1})
-        {
-            return {X, 0};
-        }
-#ifdef USE_DIV_COUNTERS
-        g_all_half_divs++;
-        double loops = 0;
-#endif
-        U128 Q{0};
-        ULOW R = 0;
-        auto rcp = reciprocal_and_extend(Y);
-        const auto &rcp_compl = Y - rcp.second;
-        const bool make_inverse = rcp_compl < rcp.second; // Для ускорения сходимости.
-        rcp.first += make_inverse ? ULOW{1} : ULOW{0};
-        const auto X_old = X;
-        for (;;)
-        {
-#ifdef USE_DIV_COUNTERS
-            loops++;
-            assert(loops < 128);
-#endif
-            bool x_has_high = X.high() != 0;
-            Q += x_has_high ? U128::mult64(X.high(), rcp.first) : 0ull;
-            Q += U128{X.low() / Y};
-            const auto carry = smart_remainder_adder(R, X.low(), Y, rcp.second);
-            Q += carry;
-            X = X.high() != 0ull ? U128::mult64(X.high(), make_inverse ? rcp_compl : rcp.second) : 0ull;
-            if (X == U128{0}) {
-                if (Q > X_old) // Коррекция знака.
-                {
-                    Q = -Q;
-                    R = Y - R; // mod Y
-                    if (R == Y) {
-                        Q.inc();
-                        R = 0;
-                    }
-                }
-                break;
-            }
-            if (make_inverse)
-            {
-                Q = -Q;
-                R = Y - R; // mod Y
-            }
-        }
-#ifdef USE_DIV_COUNTERS
-        g_hist[static_cast<uint64_t>(loops)]++;
-        g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
-        g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
-        g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
-#endif
-        return {Q, R};
-    }
 
 }

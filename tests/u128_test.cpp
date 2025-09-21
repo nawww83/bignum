@@ -30,55 +30,7 @@ namespace tests_u128
 {
     void debug_test()
     {
-        {
-            // x = 43906083405423767604026828789696988171
-            // y = 9610011913395277136
-            U128 x{9171173135179088907ull, 2380153550674510179ull};
-            U128 y{9610011913395277136ull};
-            const auto [q, r] = x / y;
-            assert((q == 4'568'785'533'368'966'921ull));
-            assert(r == 8'085'581'240'885'369'915ull);
-            auto [q_, r_] = div_(x, y.low());
-            assert(q_ == q);
-            assert(r_ == r);
-        }
-        {
-            // x = 313594649253062377482
-            // y = 18446744073709551586
-            U128 x{10ull, 17ull};
-            U128 y{18446744073709551586ull};
-            const auto [q, r] = x / y;
-            assert((q == 17ull));
-            assert(r == 520ull);
-            auto [q_, r_] = div_(x, y.low());
-            assert(q_ == q);
-            assert(r_ == r);
-
-        }
-        {
-            // x = 239807672958224171001
-            // y = 15
-            U128 x{18446744073709551609ull, 12ull};
-            U128 y{29ull};
-            const auto [q, r] = x / y;
-            assert((q == 8269230102007730034ull));
-            assert(r == 15ull);
-            auto [q_, r_] = div_(x, y.low());
-            assert(q_ == q);
-            assert(r_ == r);
-        }
-        {
-            // x = 553402322211286548477
-            // y = 9
-            U128 x{18446744073709551613ull, 29ull};
-            U128 y{9ull};
-            const auto [q, r] = x / y;
-            assert((q == U128{6148914691236517205ull, 3ull}));
-            assert(r == 0ull);
-            auto [q_, r_] = div_(x, y.low());
-            assert(q_ == q);
-            assert(r_ == r);
-        }
+        ;
     }
 
     void string_value_test()
@@ -447,8 +399,7 @@ namespace tests_u128
             const ULOW y{roll_ulow(min_value, max_value)};
             if (y == ULOW{0})
                 continue;
-            // const auto &[q, r] = x / y;
-            const auto &[q, r] = div_(x, y); // Альтернативный алгоритм.
+            const auto &[q, r] = x / y;
             const auto &x_restored = q * y + r;
             const bool is_rem_ok = r < U128{y};
             const bool equality = x_restored == x;

@@ -11,7 +11,6 @@ int main()
         std::cout << "Run quick U128 tests...";
 
         debug_test();
-        // return 0;
 
         string_value_test();
 
