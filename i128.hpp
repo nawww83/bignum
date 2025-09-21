@@ -528,6 +528,14 @@ namespace bignum::i128
         std::string value() const
         {
             std::string result;
+            if (this->is_nan())
+            {
+                return "nan";
+            }
+            if (this->is_overflow())
+            {
+                return "inf";
+            }
             U128 X = this->mUnsigned;
             while (X != U128{0})
             {
@@ -537,7 +545,8 @@ namespace bignum::i128
                 result.push_back(DIGITS[d]);
                 X = X.div10();
             }
-            if (!result.empty() && this->mSign()) {
+            if (!result.empty() && this->mSign())
+            {
                 result.push_back('-');
             }
             std::reverse(result.begin(), result.end());

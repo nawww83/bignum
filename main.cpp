@@ -64,7 +64,7 @@ int main()
         using namespace tests_u128;
         constexpr size_t ITERS_PER_PART = 1024ull * 65536ull;
         // Количество частей. После каждой части происходит вывод на экран.
-        constexpr int NUM_OF_PARTS = 3;
+        constexpr int NUM_OF_PARTS = 8;
         {
             // Наименьшее значение половинок тестируемых чисел.
             const uint64_t min_high_low_value = -32ull;

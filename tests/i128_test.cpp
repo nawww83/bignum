@@ -33,6 +33,16 @@ namespace tests_i128
             const auto &x_str = x.value();
             assert(x_str == "-18446744073709551616");
         }
+        {
+            auto x = I128{U128{1}, Sign{false}, Singular{true}};
+            const auto &x_str = x.value();
+            assert(x_str == "inf");
+        }
+        {
+            auto x = I128{U128{1}, Sign{false}, Singular{false, true}};
+            const auto &x_str = x.value();
+            assert(x_str == "nan");
+        }
     }
 
     void cmp_operator_test()
@@ -158,6 +168,18 @@ namespace tests_i128
             I128 z = x + y;
             assert(z.is_overflow());
         }
+        {
+            I128 x{U128{1}};
+            I128 y{U128{1}}; y.set_overflow();
+            I128 z = x + y;
+            assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{1}};
+            I128 y{U128{1}}; y.set_nan();
+            I128 z = x + y;
+            assert(z.is_nan());
+        }
     }
 
     void subtraction_test()
@@ -203,6 +225,18 @@ namespace tests_i128
             I128 y{U128{1}};
             I128 z = x - y;
             assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{1}};
+            I128 y{U128{1}}; y.set_overflow();
+            I128 z = x - y;
+            assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{1}};
+            I128 y{U128{1}}; y.set_nan();
+            I128 z = x - y;
+            assert(z.is_nan());
         }
     }
 
@@ -264,6 +298,18 @@ namespace tests_i128
             ULOW y{-1ull};
             I128 z = x * y;
             assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{0}};
+            I128 y{U128{1}}; y.set_overflow();
+            I128 z = x * y;
+            assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{0}};
+            I128 y{U128{1}}; y.set_nan();
+            I128 z = x * y;
+            assert(z.is_nan());
         }
     }
 
@@ -416,6 +462,18 @@ namespace tests_i128
             const auto &[q, r] = x / y;
             assert(q == I128{222ull});
             assert(r == I128{0});
+        }
+        {
+            I128 x{U128{0}};
+            I128 y{U128{1}}; y.set_overflow();
+            I128 z = (x / y).first;
+            assert(z.is_overflow());
+        }
+        {
+            I128 x{U128{0}};
+            I128 y{U128{1}}; y.set_nan();
+            I128 z = (x / y).first;
+            assert(z.is_nan());
         }
     }
 }

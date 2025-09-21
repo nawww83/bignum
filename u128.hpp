@@ -43,9 +43,9 @@ namespace bignum::u128
     using ULOW = low64::ULOW;
 
     /**
-     * @brief Число, битовое представление которого состоит из всех единиц.
+     * @brief Наибольшее значение числа.
      */
-    inline constexpr ULOW AllUnits()
+    inline constexpr ULOW MaxULOW()
     {
         return ULOW{-1ull};
     }
@@ -194,7 +194,7 @@ namespace bignum::u128
             int ishift = shift;
             if (ishift < 64)
             {
-                ULOW mask = AllUnits();
+                ULOW mask = MaxULOW();
                 mask <<= ishift;
                 mask = ~mask;
                 const auto &H = result.mHigh & mask;
@@ -501,7 +501,7 @@ namespace bignum::u128
                 const auto &result = X / Y.mLow;
                 return {result.first, U128{result.second}};
             }
-            constexpr auto MAX_ULOW = AllUnits();
+            constexpr auto MAX_ULOW = MaxULOW();
             const ULOW &Q = X.mHigh / Y.mHigh;
             const ULOW &R = X.mHigh % Y.mHigh;
             const ULOW &Delta = MAX_ULOW - Y.mLow;
@@ -510,7 +510,7 @@ namespace bignum::u128
             U128 W1{sum_1 - U128{0, Q}};
             const bool make_inverse_1 = sum_1 < U128{0, Q};
             if (make_inverse_1)
-                W1 = (U128::get_max_value() - W1) + U128{1};
+                W1 = - W1;
 #ifdef USE_DIV_COUNTERS
             g_all_divs++;
             double loops = 0;
@@ -520,18 +520,18 @@ namespace bignum::u128
             auto [Quotient, _] = W1 / W2;
             std::tie(Quotient, std::ignore) = Quotient / C1;
             if (make_inverse_1)
-                Quotient = (U128::get_max_value() - Quotient) + U128{1};
+                Quotient = - Quotient;
             U128 result = U128{Q} + Quotient - U128{make_inverse_1 ? 1ull : 0ull};
             const U128 &N = Y * result.mLow;
             U128 Error{X - N};
-            const bool make_inverse_2 = X < N;
+            const bool negative_error = X < N;
             while (Error >= Y)
             {
 #ifdef USE_DIV_COUNTERS
                 loops++;
                 assert(loops < 128);
 #endif
-                if (make_inverse_2)
+                if (negative_error)
                 {
                     result.dec();
                     Error += Y;
@@ -582,7 +582,7 @@ namespace bignum::u128
          */
         static constexpr U128 get_max_value()
         {
-            return U128{AllUnits(), AllUnits()};
+            return U128{MaxULOW(), MaxULOW()};
         }
 
         /**
@@ -624,12 +624,12 @@ namespace bignum::u128
         {
             const U128 &X = *this;
             constexpr auto TEN = ULOW{10};
-            const auto reciprocal = AllUnits() / TEN;
+            const auto& reciprocal = MaxULOW() / TEN;
             ULOW Q = X.mHigh / TEN;
             ULOW R = X.mHigh % TEN;
             ULOW N = R * reciprocal + (X.mLow / TEN);
             U128 result{N, Q};
-            for (U128 E{X - result * TEN}; E >= TEN; E -= U128{N, Q} * TEN)
+            for (U128 E{X - result * TEN}; E >= TEN; E -= TEN * U128{N, Q})
             {
                 Q = E.mHigh / TEN;
                 R = E.mHigh % TEN;
@@ -644,7 +644,7 @@ namespace bignum::u128
          */
         int mod10() const
         {
-            const int multiplier_mod10 = AllUnits()() % 10 + 1;
+            const int multiplier_mod10 = MaxULOW()() % 10 + 1;
             return ((mLow() % 10) + multiplier_mod10 * (mHigh() % 10)) % 10;
         }
 
