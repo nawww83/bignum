@@ -306,6 +306,14 @@ namespace bignum::u128
         }
 
         /**
+         * @brief Оператор минус.
+         */
+        U128 operator-() const
+        {
+            return U128{0} - *this;
+        }
+
+        /**
          * @brief Инкремент числа.
          * @return Число + 1.
          */
@@ -638,6 +646,27 @@ namespace bignum::u128
     }
 
     /**
+     * @brief r = (r - delta) mod m
+     * Возвращает 1, если остаток вычитании сложении был больше или равен модулю m; иначе возвращает ноль.
+     * @param r_rec = 2^64 mod m.
+     */
+    inline ULOW smart_remainder_subtractor(ULOW &r, const ULOW &delta, const ULOW &m, const ULOW &r_rec)
+    {
+        const auto &summ = U128{r} + U128{delta % m};
+        bool overflow = summ.high() != 0;
+        if (overflow)
+        {
+            r = (summ.low() + r_rec * summ.high()) % m;
+            return 1ull;
+        }
+        else
+        {
+            r = summ.low() % m;
+            return summ.low() >= m ? 1ull : 0ull;
+        }
+    }
+
+    /**
      * @brief Вычисляет 2^64 / x, частное Q и остаток R.
      */
     inline std::pair<ULOW, ULOW> reciprocal_and_extend(ULOW x)
@@ -653,9 +682,9 @@ namespace bignum::u128
 
     /**
      * @brief Альтернативный алгоритм деления "широкого" числа на "узкое".
-     * @brief Дает в среднем 27,5 итераций вместо 25,5 для текущего оператора деления operator/().
+     * @brief
      */
-    inline std::pair<U128, ULOW> div_(U128 X, const ULOW &Y)
+    inline std::pair<U128, ULOW> div_(U128 X, ULOW Y)
     {
         assert(Y != 0);
         if (Y == ULOW{1})
@@ -668,22 +697,40 @@ namespace bignum::u128
 #endif
         U128 Q{0};
         ULOW R = 0;
-        const auto &rcp = reciprocal_and_extend(Y);
-        auto iteration = [&Q, &R, Y, &rcp](U128 &x)
-        {
-            Q += x.high() != 0ull ? U128::mult64(x.high(), rcp.first) : 0ull;
-            Q += U128{x.low() / Y};
-            const auto carry = smart_remainder_adder(R, x.low(), Y, rcp.second);
-            Q += carry;
-            x = x.high() != 0ull ? U128::mult64(x.high(), rcp.second) : 0ull;
-        };
-        while (X != U128{0})
+        auto rcp = reciprocal_and_extend(Y);
+        const auto &rcp_compl = Y - rcp.second;
+        const bool make_inverse = rcp_compl < rcp.second; // Для ускорения сходимости.
+        rcp.first += make_inverse ? ULOW{1} : ULOW{0};
+        const auto X_old = X;
+        for (;;)
         {
 #ifdef USE_DIV_COUNTERS
             loops++;
             assert(loops < 128);
 #endif
-            iteration(X);
+            bool x_has_high = X.high() != 0;
+            Q += x_has_high ? U128::mult64(X.high(), rcp.first) : 0ull;
+            Q += U128{X.low() / Y};
+            const auto carry = smart_remainder_adder(R, X.low(), Y, rcp.second);
+            Q += carry;
+            X = X.high() != 0ull ? U128::mult64(X.high(), make_inverse ? rcp_compl : rcp.second) : 0ull;
+            if (X == U128{0}) {
+                if (Q > X_old) // Коррекция знака.
+                {
+                    Q = -Q;
+                    R = Y - R; // mod Y
+                    if (R == Y) {
+                        Q.inc();
+                        R = 0;
+                    }
+                }
+                break;
+            }
+            if (make_inverse)
+            {
+                Q = -Q;
+                R = Y - R; // mod Y
+            }
         }
 #ifdef USE_DIV_COUNTERS
         g_hist[static_cast<uint64_t>(loops)]++;
