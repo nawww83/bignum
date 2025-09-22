@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
 #include "../i128.hpp"
+#include "../i128_utils.hpp"
 
 using namespace bignum::i128;
 
@@ -474,6 +475,57 @@ namespace tests_i128
             I128 y{U128{1}}; y.set_nan();
             I128 z = (x / y).first;
             assert(z.is_nan());
+        }
+    }
+
+    void isqrt_test()
+    {
+        {
+            I128 x{U128{4}};
+            bool exact;
+            auto y = isqrt(x, exact);
+            assert(y == I128{2});
+            assert(exact);
+        }
+        {
+            I128 x{U128{5}};
+            bool exact;
+            auto y = isqrt(x, exact);
+            assert(y == I128{2});
+            assert(!exact);
+        }
+        {
+            I128 x{U128{0}};
+            bool exact;
+            auto y = isqrt(x, exact);
+            assert(y == I128{0});
+            assert(exact);
+        }
+        {
+            I128 x{U128{1}};
+            bool exact;
+            auto y = isqrt(x, exact);
+            assert(y == I128{1});
+            assert(exact);
+        }
+        {
+            I128 x{U128{1}, Sign{true}};
+            bool exact;
+            auto y = isqrt(x, exact);
+            assert(y == I128{1});
+            assert(exact);
+        }
+        {
+            I128 x{U128{1}}; x.set_overflow();
+            auto y = isqrt(x);
+            assert(y.is_overflow());
+        }
+        {
+            I128 x{U128{11817193982676505668ull, 8262476398185226452ull}};
+            bool exact;
+            auto y = isqrt(x, exact);
+            assert(y == I128{12345678901234567890ull});
+            assert(exact);
         }
     }
 }

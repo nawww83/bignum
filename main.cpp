@@ -56,6 +56,8 @@ int main()
 
         division_test();
 
+        isqrt_test();
+
         std::cout << "Ok!\n";
     }
 

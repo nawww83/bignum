@@ -468,7 +468,7 @@ namespace bignum::i128
                 result.set_nan();
                 return {result, 0};
             }
-            auto [q, r] = X.mUnsigned / Y;
+            const auto& [q, r] = X.mUnsigned / Y;
             auto Q = I128{q, X.mSign};
             auto R = X - Q * Y;
             if (R.is_negative())
@@ -499,7 +499,7 @@ namespace bignum::i128
                 result.set_nan();
                 return {result, 0};
             }
-            auto [q, r] = X.mUnsigned / Y.mUnsigned;
+            const auto& [q, r] = X.mUnsigned / Y.mUnsigned;
             auto Q = I128{q, X.mSign ^ Y.mSign};
             auto R = X - Q * Y;
             if (!R.is_zero() && (R.mSign ^ Y.mSign)())

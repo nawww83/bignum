@@ -20,4 +20,6 @@ namespace tests_i128
     void multiplication_test();
 
     void division_test();
+
+    void isqrt_test();
 }
