@@ -84,7 +84,7 @@ namespace sign
          */
         bool operator==(const Sign &other) const
         {
-            return mSign == other.mSign ? true : ((operator()() && other.operator()()) || (!operator()() && !other.operator()()));
+            return (operator()() && other.operator()()) || (!operator()() && !other.operator()());
         }
 
         /**
