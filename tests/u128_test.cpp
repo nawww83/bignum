@@ -372,6 +372,34 @@ namespace tests_u128
         }
     }
 
+    void bit_length_test()
+    {
+        {
+            U128 x{0};
+            assert(x.bit_length() == 0);
+        }
+        {
+            U128 x{1};
+            assert(x.bit_length() == 1);
+        }
+        {
+            U128 x{2};
+            assert(x.bit_length() == 2);
+        }
+        {
+            U128 x{127};
+            assert(x.bit_length() == 7);
+        }
+        {
+            U128 x{128};
+            assert(x.bit_length() == 8);
+        }
+        {
+            U128 x = U128::get_max_value();
+            assert(x.bit_length() == 128);
+        }
+    }
+
     void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part)
     {
 #ifdef USE_DIV_COUNTERS

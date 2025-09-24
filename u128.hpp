@@ -578,6 +578,21 @@ namespace bignum::u128
         }
 
         /**
+         * @brief Количество битов, требуемое для представления числа.
+         */
+        u64 bit_length() const
+        {
+            U128 X = *this;
+            u64 result = 0;
+            while (X != U128{0})
+            {
+                result++;
+                X >>= 1;
+            }
+            return result;
+        }
+
+        /**
          * @brief Получить максимальное значение 128-битного числа.
          */
         static constexpr U128 get_max_value()

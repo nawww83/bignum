@@ -509,14 +509,15 @@ namespace tests_i128
             assert(exact);
         }
         {
-            I128 x{U128{1}, Sign{true}};
+            I128 x{625ull};
             bool exact;
             auto y = isqrt(x, exact);
-            assert(y == I128{1});
+            assert(y == I128{25ull});
             assert(exact);
         }
         {
-            I128 x{U128{1}}; x.set_overflow();
+            I128 x{U128{1}};
+            x.set_overflow();
             auto y = isqrt(x);
             assert(y.is_overflow());
         }

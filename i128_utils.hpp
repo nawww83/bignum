@@ -5,32 +5,32 @@
 using namespace bignum::i128;
 
 /**
- * @brief Целочисленный квадратный корень из модуля числа, sqrt(abs(x)).
+ * @brief Целочисленный квадратный корень числа, sqrt(x).
  * @param exact Точно ли прошло извлечение корня.
  */
-inline I128 isqrt(I128 x, bool &exact)
+inline I128 isqrt(const I128& x, bool &exact)
 {
     exact = false;
     if (x.is_singular())
         return x;
-    x = x.abs();
-    I128 result{x >= I128{0, 1} ? ULOW(1) << 32 : ULOW(1) << 16}; // Начальное приближение.
-    I128 reg_x[2] {x, I128{0}}; // Регистр сдвига.
+    assert(x.is_nonegative());
+    if (x.is_zero())
+    {
+        exact = true;
+        return x;
+    }
+    const U128& X = x.unsigned_part();
+    U128 result{ULOW{1ull} << (x.bit_length() / 2)}; // Начальное приближение.
+    U128 reg_x[] {X, U128{0}}; // Регистр сдвига.
     constexpr auto TWO = ULOW{2};
     for (;;) // Метод Ньютона.
     {
-        reg_x[1] = reg_x[0];
-        reg_x[0] = result;
-        const auto &[quotient, remainder] = x / result;
+        reg_x[1] = reg_x[0] = result;
+        const auto &[quotient, remainder] = X / result;
         std::tie(result, std::ignore) = (result + quotient) / TWO;
-        if (result.is_zero())
-        {
-            exact = true;
-            return result;
-        }
         if (result == reg_x[0])
         {
-            exact = remainder.is_zero() && quotient == reg_x[0];
+            exact = remainder == U128{0} && quotient == result;
             return result;
         }
         if (result == reg_x[1])

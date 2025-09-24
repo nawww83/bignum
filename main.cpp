@@ -36,6 +36,8 @@ int main()
 
         reciprocal_test();
 
+        bit_length_test();
+
         std::cout << "Ok!\n";
     }
 

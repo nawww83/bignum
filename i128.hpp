@@ -511,6 +511,22 @@ namespace bignum::i128
         }
 
         /**
+         * @brief Количество битов, требуемое для представления числа.
+         */
+        u64 bit_length() const
+        {
+            return mUnsigned.bit_length();
+        }
+
+        /**
+         * @brief Возвращает беззнаковую часть числа.
+         */
+        U128 unsigned_part() const
+        {
+            return mUnsigned;
+        }
+
+        /**
          * @brief Сдвиг влеово на 64 бита беззнаковой части.
          * Сохраняет знак. С переполнением.
          */
