@@ -35,6 +35,12 @@ namespace tests_u128
 
     void bit_length_test();
 
+    void quadratic_residue_test();
+
+    void sqrt_mod_test();
+
+    void div_mod_test();
+
     void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part);
 
     void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part);

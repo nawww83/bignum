@@ -480,6 +480,7 @@ namespace tests_i128
 
     void isqrt_test()
     {
+        using namespace i128_utils;
         {
             I128 x{U128{4}};
             bool exact;

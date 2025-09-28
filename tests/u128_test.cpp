@@ -3,6 +3,7 @@
 #include <iostream>
 #include "../defines.h"
 #include "../u128.hpp"
+#include "../u128_utils.hpp"
 
 using namespace bignum::u128;
 
@@ -397,6 +398,136 @@ namespace tests_u128
         {
             U128 x = U128::get_max_value();
             assert(x.bit_length() == 128);
+        }
+    }
+
+    void quadratic_residue_test()
+    {
+        using namespace u128_utils;
+        const U128 x{15347ull};
+        {
+            const U128 p{2ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(is_ok);
+        }
+        {
+            const U128 p{17ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(is_ok);
+        }
+        {
+            const U128 p{23ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(is_ok);
+        }
+        {
+            const U128 p{29ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(is_ok);
+        }
+        {
+            const U128 p{31ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(is_ok);
+        }
+        {
+            const U128 p{3ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{5ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{7ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{11ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{13ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{19ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{37ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+        {
+            const U128 p{41ull};
+            bool is_ok = is_quadratic_residue(x, p);
+            assert(!is_ok);
+        }
+    }
+
+    void sqrt_mod_test()
+    {
+        using namespace u128_utils;
+        {
+            const U128 x{3435ull};
+            const U128 p{13ull};
+            auto [x1, x2] = sqrt_mod(x, p);
+            assert(x1 == U128{4ull});
+            assert(x2 == U128{9ull});
+        }
+        {
+            const U128 x{26ull};
+            const U128 p{13ull};
+            auto [x1, x2] = sqrt_mod(x, p);
+            assert(x1 == U128{0ull});
+            assert(x2 == U128{0ull});
+        }
+    }
+
+    void div_mod_test()
+    {
+        using namespace u128_utils;
+        {
+            const U128 x{35ull};
+            const U128 y{3ull};
+            const U128 p{13ull};
+            auto q = div_mod(x, y, p);
+            assert(((q*y) / p).second == (x / p).second);
+        }
+        {
+            const U128 x{35ull};
+            const U128 y{7ull};
+            const U128 p{13ull};
+            auto q = div_mod(x, y, p);
+            assert(((q*y) / p).second == (x / p).second);
+        }
+        {
+            const U128 x{14ull};
+            const U128 y{8ull};
+            const U128 p{7ull};
+            auto q = div_mod(x, y, p);
+            assert(((q*y) / p).second == (x / p).second);
+        }
+        {
+            const U128 x{0ull};
+            const U128 y{8ull};
+            const U128 p{8ull};
+            auto q = div_mod(x, y, p);
+            assert(((q*y) / p).second == (x / p).second);
+        }
+        {
+            const U128 x{16ull};
+            const U128 y{8ull};
+            const U128 p{8ull};
+            auto q = div_mod(x, y, p);
+            assert(((q*y) / p).second == (x / p).second);
         }
     }
 

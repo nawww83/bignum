@@ -38,6 +38,12 @@ int main()
 
         bit_length_test();
 
+        quadratic_residue_test();
+
+        sqrt_mod_test();
+
+        div_mod_test();
+
         std::cout << "Ok!\n";
     }
 
