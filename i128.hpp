@@ -3,7 +3,7 @@
  * @brief Класс для арифметики 128-битных знаковых целых чисел с переполнением.
  */
 
-#include <cstdint>      // uint16_t, uint8_t
+#include <cstdint>      // uint64_t, uint32_t, uint16_t, uint8_t
 #include "u128.hpp"     // U128
 #include "sign.hpp"     // Sign
 #include "singular.hpp" // Singular

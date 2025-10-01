@@ -11,6 +11,7 @@
 				"-O2",
 				"tests/u128_test.cpp",
 				"tests/i128_test.cpp",
+				"tests/ubig_test.cpp",
 				"${file}",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}"

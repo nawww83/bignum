@@ -1,6 +1,6 @@
 /**
  * @author nawww83@gmail.com
- * @brief Класс для арифметики 128-битных беззнаковых целых чисел.
+ * @brief Класс для арифметики N-битных беззнаковых целых чисел.
  */
 
 #pragma once
@@ -11,87 +11,28 @@
 #include <utility>   // std::exchange
 #include <algorithm> // std::min, std::max
 #include <tuple>     // std::pair, std::tie
-#include "ulow.hpp"  // low64::ULOW
-#include "defines.h"
+#include "defines.h" // DIGITS
 
-namespace bignum::generic
+namespace bignum::ubig
 {
-    /**
-     * @brief Вычисляет 2^W / x: частное Q и остаток R. Здесь W - битовая ширина числа U.
-     */
-    template <class U>
-    inline std::pair<U, U> reciprocal_and_extend(U x)
-    {
-        assert(x != U{0});
-        const auto x_old = x;
-        const auto i = x.countl_zero();
-        x <<= i;
-        auto [Q, R] = (-x) / x_old;
-        Q += (U{1ull} << i);
-        return {Q, R};
-    }
-
-    /**
-     * @brief r = (r + delta) mod m
-     * Возвращает 1, если остаток при сложении был больше или равен модулю m; иначе возвращает ноль.
-     * @param r_rec = 2^W mod m.
-     */
-    template <class U>
-    inline U smart_remainder_adder(U &r, const U& delta, const U &m, const U &r_rec)
-    {
-        assert(m != U{0});
-        auto [_, delta_m] = delta / m;
-        const U &summ = r + delta_m;
-        const bool overflow = summ < std::min(r, delta_m);
-        r = summ + (overflow ? r_rec : 0ull);
-        auto [__, r_m] = r / m;
-        r = r_m;
-        return overflow ? 1ull : (summ >= m ? 1ull : 0ull);
-    }
-}
-
-namespace bignum::u128
-{
-#ifdef USE_DIV_COUNTERS
-    inline double g_min_loops_when_div = 1. / 0.;
-    inline double g_max_loops_when_div = 0;
-    inline double g_average_loops_when_div = 0;
-
-    inline double g_all_divs = 0;
-
-    inline double g_min_loops_when_half_div = 1. / 0.;
-    inline double g_max_loops_when_half_div = 0;
-    inline double g_average_loops_when_half_div = 0;
-
-    inline double g_all_half_divs = 0;
-
-    inline uint64_t g_hist[128];
-#endif
-    /**
-     *
-     */
     using u64 = uint64_t;
 
     /**
-     * @brief Тип половинки числа.
+     * Класс для арифметики N-битных беззнаковых целых чисел, основанный на половинчатом представлении числа.
      */
-    using ULOW = low64::ULOW;
-
-    /**
-     * Класс для арифметики 128-битных беззнаковых целых чисел, основанный на половинчатом представлении числа.
-     */
-    class U128
+    template <class ULOW, unsigned WIDTH>
+    class UBig
     {
     public:
         /**
          * @brief Конструктор по умолчанию.
          */
-        explicit constexpr U128() = default;
+        explicit constexpr UBig() = default;
 
         /**
          * @brief Конструктор с параметром.
          */
-        constexpr U128(u64 low) : mLow{low}
+        constexpr UBig(u64 low) : mLow{low}
         {
             ;
         }
@@ -99,7 +40,7 @@ namespace bignum::u128
         /**
          * @brief Конструктор с параметром.
          */
-        constexpr U128(ULOW low) : mLow{low}
+        constexpr UBig(ULOW low) : mLow{low}
         {
             ;
         }
@@ -107,7 +48,7 @@ namespace bignum::u128
         /**
          * @brief Конструктор с параметрами.
          */
-        constexpr U128(u64 low, u64 high) : mLow{low}, mHigh{high}
+        constexpr UBig(u64 low, u64 high) : mLow{low}, mHigh{high}
         {
             ;
         }
@@ -115,21 +56,21 @@ namespace bignum::u128
         /**
          * @brief Конструктор с параметрами.
          */
-        constexpr U128(ULOW low, ULOW high) : mLow{low}, mHigh{high}
+        constexpr UBig(ULOW low, ULOW high) : mLow{low}, mHigh{high}
         {
             ;
         }
 
-        constexpr U128(const U128 &other) = default;
+        constexpr UBig(const UBig &other) = default;
 
-        constexpr U128(U128 &&other) = default;
+        constexpr UBig(UBig &&other) = default;
 
-        constexpr U128 &operator=(const U128 &other) = default;
+        constexpr UBig &operator=(const UBig &other) = default;
 
         /**
          * @brief Оператор равно.
          */
-        bool operator==(const U128 &other) const
+        bool operator==(const UBig &other) const
         {
             return mLow == other.mLow && mHigh == other.mHigh;
         }
@@ -137,7 +78,7 @@ namespace bignum::u128
         /**
          * @brief Оператор сравнения.
          */
-        std::partial_ordering operator<=>(const U128 &other) const
+        std::partial_ordering operator<=>(const UBig &other) const
         {
             auto high_cmp = mHigh <=> other.mHigh;
             return high_cmp != 0 ? high_cmp : mLow <=> other.mLow;
@@ -146,23 +87,23 @@ namespace bignum::u128
         /**
          * @brief Оператор сдвига влево. При больших сдвигах дает ноль.
          */
-        U128 operator<<(uint32_t shift) const
+        UBig operator<<(uint32_t shift) const
         {
-            if (shift >= 128u)
+            if (shift >= WIDTH)
             {
-                return U128{0};
+                return UBig{0};
             }
-            U128 result = *this;
+            UBig result = *this;
             int ishift = shift;
             ULOW L{0};
-            if (ishift < 64)
+            if (ishift < WIDTH/2)
             {
-                L = ishift == 0 ? L : result.mLow >> (64 - ishift);
+                L = ishift == 0 ? L : result.mLow >> (WIDTH/2 - ishift);
             }
             else
             {
-                result.mHigh = std::exchange(result.mLow, 0);
-                ishift -= 64;
+                result.mHigh = std::exchange(result.mLow, ULOW{0});
+                ishift -= WIDTH/2;
             }
             result.mLow <<= ishift;
             result.mHigh <<= ishift;
@@ -173,7 +114,7 @@ namespace bignum::u128
         /**
          * @brief Оператор сдвига влево.
          */
-        U128 &operator<<=(uint32_t shift)
+        UBig &operator<<=(uint32_t shift)
         {
             *this = *this << shift;
             return *this;
@@ -182,15 +123,15 @@ namespace bignum::u128
         /**
          * @brief Оператор сдвига вправо. При больших сдвигах дает ноль.
          */
-        U128 operator>>(uint32_t shift) const
+        UBig operator>>(uint32_t shift) const
         {
-            if (shift >= 128u)
+            if (shift >= WIDTH)
             {
-                return U128{0};
+                return UBig{0};
             }
-            U128 result = *this;
+            UBig result = *this;
             int ishift = shift;
-            if (ishift < 64)
+            if (ishift < WIDTH/2)
             {
                 ULOW mask = ULOW::get_max_value();
                 mask <<= ishift;
@@ -198,12 +139,12 @@ namespace bignum::u128
                 const auto &H = result.mHigh & mask;
                 result.mLow >>= ishift;
                 result.mHigh >>= ishift;
-                result.mLow |= ishift == 0 ? H : H << (64 - ishift);
+                result.mLow |= ishift == 0 ? H : H << (WIDTH/2 - ishift);
             }
             else
             {
-                result.mLow = std::exchange(result.mHigh, 0);
-                result.mLow >>= (ishift - 64);
+                result.mLow = std::exchange(result.mHigh, ULOW{0});
+                result.mLow >>= (ishift - WIDTH/2);
             }
             return result;
         }
@@ -211,7 +152,7 @@ namespace bignum::u128
         /**
          * @brief Оператор сдвига вправо.
          */
-        U128 &operator>>=(uint32_t shift)
+        UBig &operator>>=(uint32_t shift)
         {
             *this = *this >> shift;
             return *this;
@@ -220,9 +161,9 @@ namespace bignum::u128
         /**
          * @brief Оператор побитового И.
          */
-        U128 operator&(const U128 &mask) const
+        UBig operator&(const UBig &mask) const
         {
-            U128 result = *this;
+            UBig result = *this;
             result.mLow &= mask.mLow;
             result.mHigh &= mask.mHigh;
             return result;
@@ -231,7 +172,7 @@ namespace bignum::u128
         /**
          * @brief Оператор побитового И.
          */
-        U128 &operator&=(const U128 &mask)
+        UBig &operator&=(const UBig &mask)
         {
             *this = *this & mask;
             return *this;
@@ -240,9 +181,9 @@ namespace bignum::u128
         /**
          * @brief Оператор побитового ИЛИ.
          */
-        U128 operator|(const U128 &mask) const
+        UBig operator|(const UBig &mask) const
         {
-            U128 result = *this;
+            UBig result = *this;
             result.mLow |= mask.mLow;
             result.mHigh |= mask.mHigh;
             return result;
@@ -251,7 +192,7 @@ namespace bignum::u128
         /**
          * @brief Оператор побитового ИЛИ.
          */
-        U128 &operator|=(const U128 &mask)
+        UBig &operator|=(const UBig &mask)
         {
             *this = *this | mask;
             return *this;
@@ -260,9 +201,9 @@ namespace bignum::u128
         /**
          * @brief Оператор исключающего ИЛИ.
          */
-        U128 operator^(const U128 &mask) const
+        UBig operator^(const UBig &mask) const
         {
-            U128 result = *this;
+            UBig result = *this;
             result.mLow ^= mask.mLow;
             result.mHigh ^= mask.mHigh;
             return result;
@@ -271,7 +212,7 @@ namespace bignum::u128
         /**
          * @brief Оператор исключающего ИЛИ.
          */
-        U128 &operator^=(const U128 &mask)
+        UBig &operator^=(const UBig &mask)
         {
             *this = *this ^ mask;
             return *this;
@@ -280,9 +221,9 @@ namespace bignum::u128
         /**
          * @brief Оператор инверсии битов.
          */
-        U128 operator~() const
+        UBig operator~() const
         {
-            U128 result = *this;
+            UBig result = *this;
             result.mLow = ~result.mLow;
             result.mHigh = ~result.mHigh;
             return result;
@@ -291,10 +232,10 @@ namespace bignum::u128
         /**
          * @brief Оператор суммирования.
          */
-        U128 operator+(const U128 &Y) const
+        UBig operator+(const UBig &Y) const
         {
-            const U128 &X = *this;
-            U128 result{X.mLow + Y.mLow, X.mHigh + Y.mHigh};
+            const UBig &X = *this;
+            UBig result{X.mLow + Y.mLow, X.mHigh + Y.mHigh};
             const auto &carry = ULOW{result.mLow < std::min(X.mLow, Y.mLow) ? 1ull : 0ull};
             result.mHigh += carry;
             return result;
@@ -303,7 +244,7 @@ namespace bignum::u128
         /**
          * @brief Оператор суммирования.
          */
-        U128 &operator+=(const U128 &Y)
+        UBig &operator+=(const UBig &Y)
         {
             *this = *this + Y;
             return *this;
@@ -312,21 +253,21 @@ namespace bignum::u128
         /**
          * @brief Оператор вычитания.
          */
-        U128 operator-(const U128 &Y) const
+        UBig operator-(const UBig &Y) const
         {
-            const U128 &X = *this;
+            const UBig &X = *this;
             if (X >= Y)
             {
                 const auto &high = (X.mHigh - Y.mHigh) - ULOW{X.mLow < Y.mLow ? 1ull : 0ull};
-                return U128{X.mLow - Y.mLow, high};
+                return UBig{X.mLow - Y.mLow, high};
             }
-            return (X + (U128::get_max_value() - Y)).inc();
+            return (X + (UBig::get_max_value() - Y)).inc();
         }
 
         /**
          * @brief Оператор вычитания.
          */
-        U128 &operator-=(const U128 &Y)
+        UBig &operator-=(const UBig &Y)
         {
             *this = *this - Y;
             return *this;
@@ -335,18 +276,18 @@ namespace bignum::u128
         /**
          * @brief Оператор минус.
          */
-        U128 operator-() const
+        UBig operator-() const
         {
-            return U128{0} - *this;
+            return UBig{0} - *this;
         }
 
         /**
          * @brief Инкремент числа.
          * @return Число + 1.
          */
-        U128 &inc()
+        UBig &inc()
         {
-            *this = *this + U128{1};
+            *this = *this + UBig{1};
             return *this;
         }
 
@@ -354,24 +295,24 @@ namespace bignum::u128
          * @brief Декремент числа.
          * @return Число - 1.
          */
-        U128 &dec()
+        UBig &dec()
         {
-            *this = *this - U128{1};
+            *this = *this - UBig{1};
             return *this;
         }
 
         /**
          * @brief Оператор умножения.
          */
-        U128 operator*(const U128 &Y) const
+        UBig operator*(const UBig &Y) const
         {
-            const U128 &X = *this;
+            const UBig &X = *this;
             // x*y = (a + w*b)(c + w*d) = ac + w*(ad + bc) + w*w*bd = (ac + w*(ad + bc)) mod 2^128;
-            const U128 ac = mult64(X.mLow, Y.mLow);
-            const U128 ad = mult64(X.mLow, Y.mHigh);
-            const U128 bc = mult64(X.mHigh, Y.mLow);
-            U128 result = ad + bc;
-            result <<= 64;
+            const UBig ac = mult_ext(X.mLow, Y.mLow);
+            const UBig ad = mult_ext(X.mLow, Y.mHigh);
+            const UBig bc = mult_ext(X.mHigh, Y.mLow);
+            UBig result = ad + bc;
+            result <<= WIDTH/2;
             result += ac;
             return result;
         }
@@ -379,7 +320,7 @@ namespace bignum::u128
         /**
          * @brief Оператор умножения.
          */
-        U128 &operator*=(const U128 &Y)
+        UBig &operator*=(const UBig &Y)
         {
             *this = *this * Y;
             return *this;
@@ -388,40 +329,24 @@ namespace bignum::u128
         /**
          * @brief Половинчатый оператор умножения.
          */
-        U128 operator*(const ULOW &Y) const
+        UBig operator*(const ULOW &Y) const
         {
-            const U128 &X = *this;
+            const UBig &X = *this;
             // x*y = (a + w*b)(c + w*0) = ac + w*(0 + bc) = (ac + w*bc) mod 2^128;
-            U128 result{mult64(X.mHigh, Y)};
-            result <<= 64;
-            result += mult64(X.mLow, Y);
+            UBig result{mult_ext(X.mHigh, Y)};
+            result <<= WIDTH/2;
+            result += mult_ext(X.mLow, Y);
             return result;
         }
 
         /**
          * @brief Половинчатый оператор умножения.
          */
-        U128 &operator*=(const ULOW &Y)
+        UBig &operator*=(const ULOW &Y)
         {
             *this = *this * Y;
             return *this;
         }
-
-        /**
-         * @brief Оператор умножения. Позволяет перемножать "узкие" числа, расположенные слева от "широкого" числа.
-         */
-        template <typename T>
-        T operator*(const T &rhs) const
-        {
-            T result = rhs * *this;
-            return result;
-        }
-
-        /**
-         * @brief
-         */
-        template <typename T>
-        T &operator*=(const T &) = delete;
 
         /**
          * @brief Оператор половинчатого деления.
@@ -429,38 +354,30 @@ namespace bignum::u128
          * Количество итераций: ~[3, 42], наиболее вероятное количество - 15, среднее - около 21.
          * @return Частное от деления Q и остаток R.
          */
-        std::pair<U128, ULOW> operator/(const ULOW &Y) const
+        std::pair<UBig, ULOW> operator/(const ULOW &Y) const
         {
             assert(Y != 0);
-            U128 X = *this;
+            UBig X = *this;
             if (Y == ULOW{1})
             {
                 return {X, 0};
             }
-#ifdef USE_DIV_COUNTERS
-            g_all_half_divs++;
-            double loops = 0;
-#endif
-            U128 Q{0};
+            UBig Q{0};
             ULOW R = 0;
-            auto rcp = generic::reciprocal_and_extend<ULOW>(Y);
+            auto rcp = reciprocal_and_extend(Y);
             const auto &rcp_compl = Y - rcp.second;
             const bool make_inverse = rcp_compl < rcp.second; // Для ускорения сходимости.
             rcp.first += make_inverse ? ULOW{1} : ULOW{0};
             const auto X_old = X;
             for (;;)
             {
-#ifdef USE_DIV_COUNTERS
-                loops++;
-                assert(loops < 128);
-#endif
                 const bool x_has_high = X.high() != 0;
-                Q += x_has_high ? U128::mult64(X.high(), rcp.first) : 0ull;
-                Q += U128{(X.low() / Y).first};
-                const auto& carry = generic::smart_remainder_adder(R, X.low(), Y, rcp.second);
+                Q += x_has_high ? UBig::mult_ext(X.high(), rcp.first) : 0ull;
+                Q += UBig{X.low() / Y};
+                const auto& carry = smart_remainder_adder(R, X.low(), Y, rcp.second);
                 Q += carry;
-                X = X.high() != 0ull ? U128::mult64(X.high(), make_inverse ? rcp_compl : rcp.second) : 0ull;
-                if (X == U128{0})
+                X = X.high() != 0ull ? UBig::mult_ext(X.high(), make_inverse ? rcp_compl : rcp.second) : 0ull;
+                if (X == UBig{0})
                 {
                     if (Q > X_old) // Коррекция знака.
                     {
@@ -480,19 +397,13 @@ namespace bignum::u128
                     R = Y - R; // mod Y
                 }
             }
-#ifdef USE_DIV_COUNTERS
-            g_hist[static_cast<uint64_t>(loops)]++;
-            g_average_loops_when_half_div += (loops - g_average_loops_when_half_div) / g_all_half_divs;
-            g_max_loops_when_half_div = std::max(g_max_loops_when_half_div, loops);
-            g_min_loops_when_half_div = std::min(g_min_loops_when_half_div, loops);
-#endif
             return {Q, R};
         }
 
         /**
          * @brief
          */
-        std::pair<U128, ULOW> operator/=(const ULOW &Y)
+        std::pair<UBig, ULOW> operator/=(const ULOW &Y)
         {
             ULOW remainder;
             std::tie(*this, remainder) = *this / Y;
@@ -505,45 +416,38 @@ namespace bignum::u128
          * Отсутствует "раскачка" алгоритма для "плохих" случаев деления: (A*w + B)/(1*w + D).
          * @return Частное от деления и остаток.
          */
-        std::pair<U128, U128> operator/(const U128 &other) const
+        std::pair<UBig, UBig> operator/(const UBig &other) const
         {
-            assert(other != U128{0});
-            const U128 &X = *this;
-            const U128 &Y = other;
+            assert(other != UBig{0});
+            const UBig &X = *this;
+            const UBig &Y = other;
             if (Y.mHigh == 0)
             {
-                const auto &result = X / Y.low();
-                return {result.first, U128{result.second}};
+                const auto &result = X / Y.mLow;
+                return {result.first, UBig{result.second}};
             }
             constexpr auto MAX_ULOW = ULOW::get_max_value();
-            const auto &[Q, R] = X.high() / Y.high();
-            const auto &Delta = MAX_ULOW - Y.low();
-            const U128 &DeltaQ = mult64(Delta, Q);
-            const U128 &sum_1 = U128{0, R} + DeltaQ;
-            U128 W1{sum_1 - U128{0, Q}};
-            const bool make_inverse_1 = sum_1 < U128{0, Q};
+            const ULOW &Q = X.mHigh / Y.mHigh;
+            const ULOW &R = X.mHigh % Y.mHigh;
+            const ULOW &Delta = MAX_ULOW - Y.mLow;
+            const UBig &DeltaQ = mult_ext(Delta, Q);
+            const UBig &sum_1 = UBig{0, R} + DeltaQ;
+            UBig W1{sum_1 - UBig{0, Q}};
+            const bool make_inverse_1 = sum_1 < UBig{0, Q};
             if (make_inverse_1)
                 W1 = - W1;
-#ifdef USE_DIV_COUNTERS
-            g_all_divs++;
-            double loops = 0;
-#endif
-            const auto &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
-            const auto &W2 = MAX_ULOW - (Delta / C1).first;
+            const ULOW &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
+            const ULOW &W2 = MAX_ULOW - Delta / C1;
             auto [Quotient, _] = W1 / W2;
             std::tie(Quotient, std::ignore) = Quotient / C1;
             if (make_inverse_1)
                 Quotient = - Quotient;
-            U128 result = U128{Q} + Quotient - U128{make_inverse_1 ? 1ull : 0ull};
-            const U128 &N = Y * result.mLow;
-            U128 Error{X - N};
+            UBig result = UBig{Q} + Quotient - UBig{make_inverse_1 ? 1ull : 0ull};
+            const UBig &N = Y * result.mLow;
+            UBig Error{X - N};
             const bool negative_error = X < N;
             while (Error >= Y)
             {
-#ifdef USE_DIV_COUNTERS
-                loops++;
-                assert(loops < 128);
-#endif
                 if (negative_error)
                 {
                     result.dec();
@@ -555,21 +459,15 @@ namespace bignum::u128
                     Error -= Y;
                 }
             }
-#ifdef USE_DIV_COUNTERS
-            g_hist[static_cast<uint64_t>(loops)]++;
-            g_average_loops_when_div += (loops - g_average_loops_when_div) / g_all_divs;
-            g_max_loops_when_div = std::max(g_max_loops_when_div, loops);
-            g_min_loops_when_div = std::min(g_min_loops_when_div, loops);
-#endif
             return std::make_pair(result, Error);
         }
 
         /**
          * @brief
          */
-        std::pair<U128, U128> operator/=(const U128 &Y)
+        std::pair<UBig, UBig> operator/=(const UBig &Y)
         {
-            U128 remainder;
+            UBig remainder;
             std::tie(*this, remainder) = *this / Y;
             return std::make_pair(*this, remainder);
         }
@@ -595,9 +493,9 @@ namespace bignum::u128
          */
         u64 bit_length() const
         {
-            U128 X = *this;
+            UBig X = *this;
             u64 result = 0;
-            while (X != U128{0})
+            while (X != UBig{0})
             {
                 result++;
                 X >>= 1;
@@ -606,31 +504,21 @@ namespace bignum::u128
         }
 
         /**
-         * @brief Количество непрерывно идущих нулей битового представления числа, начиная с самого старшего бита.
+         * @brief Получить максимальное значение числа.
          */
-        int countl_zero() const
+        static constexpr UBig get_max_value()
         {
-            if (mHigh() == 0)
-                return 64 + mLow.countl_zero();
-            return mHigh.countl_zero();   
+            return UBig{ULOW::get_max_value(), ULOW::get_max_value()};
         }
 
         /**
-         * @brief Получить максимальное значение 128-битного числа.
-         */
-        static constexpr U128 get_max_value()
-        {
-            return U128{ULOW::get_max_value(), ULOW::get_max_value()};
-        }
-
-        /**
-         * @brief Умножение двух 64-битных чисел с расширением до 128-битного числа.
+         * @brief Умножение двух N/2-битных чисел с расширением до N-битного числа.
          * @details Авторский алгоритм умножения. Обобщается на любую разрядность.
          */
-        static U128 mult64(ULOW x, ULOW y)
+        static UBig mult_ext(ULOW x, ULOW y)
         {
-            constexpr int QUORTER_WIDTH = 32; // Четверть ширины 128-битного числа.
-            constexpr ULOW MASK = (ULOW{1}() << QUORTER_WIDTH) - 1;
+            constexpr int QUORTER_WIDTH = WIDTH / 4; // Четверть ширины N-битного числа.
+            const ULOW& MASK = (ULOW{1} << QUORTER_WIDTH) - ULOW{1};
             const ULOW &x_low = x & MASK;
             const ULOW &y_low = y & MASK;
             const ULOW &x_high = x >> QUORTER_WIDTH;
@@ -644,7 +532,7 @@ namespace bignum::u128
             const ULOW &s = t22 >> QUORTER_WIDTH;
             const ULOW &r = t22 & MASK;
             const ULOW &t3 = x_high * y_high;
-            U128 result{t1};
+            UBig result{t1};
             const ULOW &div = (q + s) + ((p + r + t) >> QUORTER_WIDTH);
             const auto &p1 = t21 << QUORTER_WIDTH;
             const auto &p2 = t22 << QUORTER_WIDTH;
@@ -658,19 +546,19 @@ namespace bignum::u128
         /**
          * @brief Специальный метод деления на 10 для формирования строкового представления числа.
          */
-        U128 div10() const
+        UBig div10() const
         {
-            const U128 &X = *this;
+            const UBig &X = *this;
             constexpr auto TEN = ULOW{10};
-            const auto& reciprocal = (ULOW::get_max_value() / TEN).first;
-            auto [Q, R] = X.high() / TEN;
-            ULOW N = R * reciprocal + (X.low() / TEN).first;
-            U128 result{N, Q};
-            for (U128 E{X - result * TEN}; E >= TEN; E -= TEN * U128{N, Q})
+            const auto& [reciprocal, _] = ULOW::get_max_value() / TEN;
+            auto [Q, R] = X.mHigh / TEN;
+            ULOW N = R * reciprocal + (X.mLow / TEN).first;
+            UBig result{N, Q};
+            for (UBig E{X - result * TEN}; E >= TEN; E -= TEN * UBig{N, Q})
             {
                 std::tie(Q, R) = E.mHigh / TEN;
                 N = R * reciprocal + (E.mLow / TEN).first;
-                result += U128{N, Q};
+                result += UBig{N, Q};
             }
             return result;
         }
@@ -690,8 +578,8 @@ namespace bignum::u128
         std::string value() const
         {
             std::string result;
-            U128 X = *this;
-            while (X != U128{0})
+            UBig X = *this;
+            while (X != UBig{0})
             {
                 const int d = X.mod10();
                 if (d < 0)

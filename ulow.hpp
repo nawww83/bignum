@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint> // uint64_t
+#include <bit>       // std::countl_zero
 
 namespace low64
 {
@@ -156,26 +157,14 @@ namespace low64
             return *this;
         }
 
-        ULOW operator/(const ULOW& rhs) const {
-            ULOW result = *this;
-            result.mValue /= rhs.mValue;
-            return result;
+        std::pair<ULOW, ULOW> operator/(const ULOW& rhs) const {
+            return std::make_pair(mValue / rhs.mValue, mValue % rhs.mValue);
         }
 
-        ULOW& operator/=(const ULOW& rhs) {
-            *this = *this / rhs;
-            return *this;
-        }
-
-        ULOW operator%(const ULOW& rhs) const {
-            ULOW result = *this;
-            result.mValue %= rhs.mValue;
-            return result;
-        }
-
-        ULOW& operator%=(const ULOW& rhs) {
-            *this = *this % rhs;
-            return *this;
+        std::pair<ULOW, ULOW> operator/=(const ULOW& rhs) {
+            ULOW remainder;
+            std::tie(*this, remainder) = *this / rhs;
+            return std::make_pair(*this, remainder);
         }
 
         /**
@@ -193,6 +182,27 @@ namespace low64
          */
         template <typename T>
         T &operator*=(const T &) = delete;
+
+        /**
+         * @brief
+         */
+        int countl_zero() const
+        {
+            return std::countl_zero(mValue);
+        }
+
+        int mod10() const
+        {
+            return static_cast<int>(mValue % 10ull);
+        }
+
+        /**
+         * @brief
+         */
+        static constexpr ULOW get_max_value()
+        {
+            return ULOW{-1ull};
+        }
 
     private:
         /**

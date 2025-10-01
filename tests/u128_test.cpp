@@ -346,6 +346,7 @@ namespace tests_u128
 
     void reciprocal_test()
     {
+        using namespace bignum::generic;
         {
             auto x = ULOW{1};
             auto [q, r] = reciprocal_and_extend(x);

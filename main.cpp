@@ -1,6 +1,7 @@
 #include <iostream>
 #include "tests/u128_test.hpp"
 #include "tests/i128_test.hpp"
+#include "tests/ubig_test.hpp"
 
 int main()
 {
@@ -67,6 +68,12 @@ int main()
         isqrt_test();
 
         std::cout << "Ok!\n";
+    }
+
+    {
+        using namespace tests_ubig;
+
+        debug_test();
     }
 
     if (RUN_LONG_TESTS)
