@@ -12,13 +12,15 @@
 #include <algorithm> // std::min, std::max
 #include <tuple>     // std::pair, std::tie
 #include "defines.h" // DIGITS
+#include "u128.hpp" // bignum::generic::
 
 namespace bignum::ubig
 {
     using u64 = uint64_t;
 
     /**
-     * Класс для арифметики N-битных беззнаковых целых чисел, основанный на половинчатом представлении числа.
+     * @brief Класс для арифметики N-битных беззнаковых целых чисел, основанный на половинчатом представлении числа.
+     * @details WIDTH - ширина числа, в битах. Числа беззнаковые, без переполнения: работают в арифметике по модулю 2^N.
      */
     template <class ULOW, unsigned WIDTH>
     class UBig
@@ -349,6 +351,22 @@ namespace bignum::ubig
         }
 
         /**
+         * @brief Оператор умножения. Позволяет перемножать "узкие" числа, расположенные слева от "широкого" числа.
+         */
+        template <typename T>
+        T operator*(const T &rhs) const
+        {
+            T result = rhs * *this;
+            return result;
+        }
+
+        /**
+         * @brief
+         */
+        template <typename T>
+        T &operator*=(const T &) = delete;
+
+        /**
          * @brief Оператор половинчатого деления.
          * @details Авторский метод итеративного деления "широкого" числа на "узкое".
          * Количество итераций: ~[3, 42], наиболее вероятное количество - 15, среднее - около 21.
@@ -364,7 +382,7 @@ namespace bignum::ubig
             }
             UBig Q{0};
             ULOW R = 0;
-            auto rcp = reciprocal_and_extend(Y);
+            auto rcp = bignum::generic::reciprocal_and_extend(Y);
             const auto &rcp_compl = Y - rcp.second;
             const bool make_inverse = rcp_compl < rcp.second; // Для ускорения сходимости.
             rcp.first += make_inverse ? ULOW{1} : ULOW{0};
@@ -373,8 +391,8 @@ namespace bignum::ubig
             {
                 const bool x_has_high = X.high() != 0;
                 Q += x_has_high ? UBig::mult_ext(X.high(), rcp.first) : 0ull;
-                Q += UBig{X.low() / Y};
-                const auto& carry = smart_remainder_adder(R, X.low(), Y, rcp.second);
+                Q += UBig{(X.low() / Y).first};
+                const auto& carry = bignum::generic::smart_remainder_adder(R, X.low(), Y, rcp.second);
                 Q += carry;
                 X = X.high() != 0ull ? UBig::mult_ext(X.high(), make_inverse ? rcp_compl : rcp.second) : 0ull;
                 if (X == UBig{0})
@@ -427,8 +445,7 @@ namespace bignum::ubig
                 return {result.first, UBig{result.second}};
             }
             constexpr auto MAX_ULOW = ULOW::get_max_value();
-            const ULOW &Q = X.mHigh / Y.mHigh;
-            const ULOW &R = X.mHigh % Y.mHigh;
+            const auto &[Q, R] = X.mHigh / Y.mHigh;
             const ULOW &Delta = MAX_ULOW - Y.mLow;
             const UBig &DeltaQ = mult_ext(Delta, Q);
             const UBig &sum_1 = UBig{0, R} + DeltaQ;
@@ -437,7 +454,7 @@ namespace bignum::ubig
             if (make_inverse_1)
                 W1 = - W1;
             const ULOW &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
-            const ULOW &W2 = MAX_ULOW - Delta / C1;
+            const ULOW &W2 = MAX_ULOW - (Delta / C1).first;
             auto [Quotient, _] = W1 / W2;
             std::tie(Quotient, std::ignore) = Quotient / C1;
             if (make_inverse_1)
