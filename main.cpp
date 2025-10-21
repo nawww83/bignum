@@ -39,6 +39,8 @@ int main()
 
         bit_length_test();
 
+        sqrt_test();
+
         quadratic_residue_test();
 
         sqrt_mod_test();

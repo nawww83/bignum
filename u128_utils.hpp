@@ -21,12 +21,13 @@ inline U128 isqrt(const U128& x, bool &exact)
         exact = true;
         return x;
     }
-    U128 result{ULOW{1ull} << (x.bit_length() / 2)}; // Начальное приближение.
+    auto result = U128{1} << (x.bit_length() / 2); // Начальное приближение.
     U128 reg_x[] {x, U128{0}}; // Регистр сдвига.
     constexpr auto TWO = ULOW{2};
     for (;;) // Метод Ньютона.
     {
-        reg_x[1] = reg_x[0] = result;
+        reg_x[1] = reg_x[0];
+        reg_x[0] = result;
         const auto &[quotient, remainder] = x / result;
         std::tie(result, std::ignore) = (result + quotient) / TWO;
         if (result == reg_x[0])

@@ -402,6 +402,16 @@ namespace tests_u128
         }
     }
 
+    void sqrt_test()
+    {
+        using namespace u128_utils;
+        {
+            U128 x = U128::get_max_value();
+            U128 y = isqrt(x);
+            assert(y.value() == "18446744073709551615");
+        }
+    }
+
     void quadratic_residue_test()
     {
         using namespace u128_utils;

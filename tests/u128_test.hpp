@@ -35,6 +35,8 @@ namespace tests_u128
 
     void bit_length_test();
 
+    void sqrt_test();
+
     void quadratic_residue_test();
 
     void sqrt_mod_test();
