@@ -37,6 +37,8 @@ namespace tests_u128
 
     void sqrt_test();
 
+    void mult_mod_test();
+
     void quadratic_residue_test();
 
     void sqrt_mod_test();

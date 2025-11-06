@@ -41,13 +41,15 @@ int main()
 
         sqrt_test();
 
+        mult_mod_test();
+
         quadratic_residue_test();
 
         sqrt_mod_test();
 
         div_mod_test();
 
-        std::cout << "Ok!\n";
+        std::cout << "Ok.\n";
     }
 
     {
@@ -69,7 +71,7 @@ int main()
 
         isqrt_test();
 
-        std::cout << "Ok!\n";
+        std::cout << "Ok.\n";
     }
 
     {
