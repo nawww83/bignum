@@ -3,6 +3,7 @@
 #include "u128.hpp"
 #include <cassert>
 #include <utility> // std::pair
+#include "ubig.hpp"
 
 namespace u128_utils
 {
@@ -104,6 +105,20 @@ inline U128 div_mod(const U128& x, const U128& y, const U128& p)
     while ((rx / ry).second != U128{0})
         rx += p;
     return (rx / ry).first; 
+}
+
+/**
+ * @brief Умножение двух чисел по заданному модулю.
+ * @return (x*y) mod m.
+ */
+inline U128 mult_mod(const U128& x, const U128& y, const U128& m)
+{
+    assert(m != 0);
+    using namespace bignum::ubig;
+    using U256 = UBig<U128, 256>;
+    const U256& z = U256::mult_ext(x, y);
+    const auto& [_, r] = z / m;
+    return r;
 }
 
 }

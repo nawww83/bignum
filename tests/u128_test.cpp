@@ -419,28 +419,28 @@ namespace tests_u128
             U128 x {1, 1};
             U128 y {1, 1};
             U128 m = U128::get_max_value();
-            U128 z = U128::mult_mod(x, y, m);
+            U128 z = mult_mod(x, y, m);
             assert(z.value() == "36893488147419103234");
         }
         {
             U128 x {1, 1};
             U128 y {1, 1};
             U128 m {1, 1};
-            U128 z = U128::mult_mod(x, y, m);
+            U128 z = mult_mod(x, y, m);
             assert(z == U128{0});
         }
         {
             U128 x {3, 1};
             U128 y {1, 1};
             U128 m {1, 1};
-            U128 z = U128::mult_mod(x, y, m);
+            U128 z = mult_mod(x, y, m);
             assert(z == U128{0});
         }
         {
             U128 x {11, 5};
             U128 y {3, 7};
             U128 m {17, 13};
-            U128 z = U128::mult_mod(x, y, m);
+            U128 z = mult_mod(x, y, m);
             assert(z.value() == "151830893529763232515");
         }
     }
