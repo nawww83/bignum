@@ -310,9 +310,9 @@ namespace bignum::ubig
         {
             const UBig &X = *this;
             // x*y = (a + w*b)(c + w*d) = ac + w*(ad + bc) + w*w*bd = (ac + w*(ad + bc)) mod 2^128;
-            const UBig ac = mult_ext(X.mLow, Y.mLow);
-            const UBig ad = mult_ext(X.mLow, Y.mHigh);
-            const UBig bc = mult_ext(X.mHigh, Y.mLow);
+            const UBig& ac = mult_ext(X.mLow, Y.mLow);
+            const UBig& ad = mult_ext(X.mLow, Y.mHigh);
+            const UBig& bc = (X != Y) ? mult_ext(X.mHigh, Y.mLow) : ad;
             UBig result = ad + bc;
             result <<= WIDTH/2;
             result += ac;
@@ -377,9 +377,9 @@ namespace bignum::ubig
             assert(Y != 0);
             UBig X = *this;
             if (Y == ULOW{1})
-            {
                 return {X, 0};
-            }
+            if (X.high() == 0) 
+                return X.low() / Y;
             UBig Q{0};
             ULOW R = 0;
             auto rcp = bignum::generic::reciprocal_and_extend(Y);
@@ -439,6 +439,8 @@ namespace bignum::ubig
             assert(other != UBig{0});
             const UBig &X = *this;
             const UBig &Y = other;
+            if (X < Y)
+                return {0, X};
             if (Y.mHigh == 0)
             {
                 const auto &result = X / Y.mLow;
@@ -554,6 +556,31 @@ namespace bignum::ubig
             const auto &p1 = t21 << QUORTER_WIDTH;
             const auto &p2 = t22 << QUORTER_WIDTH;
             const ULOW &mod = p1 + p2;
+            result.mLow += mod;
+            result.mHigh += div;
+            result.mHigh += t3;
+            return result;
+        }
+        
+        /**
+         * @brief Возведение в квадрат N/2-битного числа с расширением до N-битного числа.
+         */
+        static UBig square(ULOW x)
+        {
+            constexpr int QUORTER_WIDTH = WIDTH / 4; // Четверть ширины N-битного числа.
+            const ULOW& MASK = (ULOW{1} << QUORTER_WIDTH) - ULOW{1};
+            const ULOW &x_low = x & MASK;
+            const ULOW &x_high = x >> QUORTER_WIDTH;
+            const ULOW &t1 = x_low * x_low;
+            const ULOW &t = t1 >> QUORTER_WIDTH;
+            const ULOW &t21 = x_low * x_high;
+            const ULOW &q = t21 >> QUORTER_WIDTH;
+            const ULOW &p = t21 & MASK;
+            const ULOW &t3 = x_high * x_high;
+            UBig result{t1};
+            const ULOW &div = (q + q) + ((p + p + t) >> QUORTER_WIDTH);
+            const auto &p1 = t21 << QUORTER_WIDTH;
+            const ULOW &mod = p1 + p1;
             result.mLow += mod;
             result.mHigh += div;
             result.mHigh += t3;

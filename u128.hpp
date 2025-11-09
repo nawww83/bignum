@@ -367,9 +367,9 @@ namespace bignum::u128
         {
             const U128 &X = *this;
             // x*y = (a + w*b)(c + w*d) = ac + w*(ad + bc) + w*w*bd = (ac + w*(ad + bc)) mod 2^128;
-            const U128 ac = mult64(X.mLow, Y.mLow);
-            const U128 ad = mult64(X.mLow, Y.mHigh);
-            const U128 bc = mult64(X.mHigh, Y.mLow);
+            const U128& ac = mult64(X.mLow, Y.mLow);
+            const U128& ad = mult64(X.mLow, Y.mHigh);
+            const U128& bc = (X != Y) ? mult64(X.mHigh, Y.mLow) : ad;
             U128 result = ad + bc;
             result <<= 64;
             result += ac;
@@ -434,9 +434,9 @@ namespace bignum::u128
             assert(Y != 0);
             U128 X = *this;
             if (Y == ULOW{1})
-            {
                 return {X, 0};
-            }
+            if (X.high() == 0) 
+                return X.low() / Y;
 #ifdef USE_DIV_COUNTERS
             g_all_half_divs++;
             double loops = 0;
@@ -510,6 +510,8 @@ namespace bignum::u128
             assert(other != U128{0});
             const U128 &X = *this;
             const U128 &Y = other;
+            if (X < Y)
+                return {0, X};
             if (Y.mHigh == 0)
             {
                 const auto &result = X / Y.low();
