@@ -17,7 +17,7 @@ using namespace bignum::u128;
 inline U128 isqrt(const U128& x, bool &exact)
 {
     exact = false;
-    if (x == U128{0})
+    if (x == 0)
     {
         exact = true;
         return x;
@@ -55,14 +55,14 @@ inline U128 isqrt(const U128& x)
  */
 inline bool is_quadratic_residue(const U128& x, const U128& p)
 {
-    assert(p != U128{0});
+    assert(p != 0);
     const auto& [_, rx] = x / p;
     U128 y2 = 0;
     for (U128 y = 0; y < p; y.inc())
     {                
         if (const auto& [_, ry2] = y2 / p; ry2 == rx)
             return true;
-        y2 += (y + y + U128{1});
+        y2 += (y + y + 1);
     }
     return false; 
 }
@@ -72,16 +72,16 @@ inline bool is_quadratic_residue(const U128& x, const U128& p)
  */
 inline std::pair<U128, U128> sqrt_mod(const U128& x, const U128& p)
 {
-    assert(p != U128{0});
+    assert(p != 0);
     U128 result[2];
     int idx = 0;
-    const auto& [_, rx] = x / p;
+    const auto& rx = (x / p).second;
     U128 y2 = 0;
     for (U128 y = 0; y < p; y.inc())
     {
-        if (const auto& [_, ry2] = y2 / p; ry2 == rx)
+        if (const auto& ry2 = (y2 / p).second; ry2 == rx)
             result[idx++] = y;
-        y2 += (y + y + U128{1});
+        y2 += (y + y + 1);
         if (idx == 2) break;
     }
     if (idx == 1)
@@ -95,14 +95,14 @@ inline std::pair<U128, U128> sqrt_mod(const U128& x, const U128& p)
 inline U128 div_mod(const U128& x, const U128& y, const U128& p)
 {
     assert(p != 0);
-    auto [_, rx] = x / p;
-    const auto& [__, ry] = y / p; 
-    if (ry == U128{0})
+    auto rx = (x / p).second;
+    const auto& ry = (y / p).second; 
+    if (ry == 0)
     {
-        assert(rx == U128{0});
+        assert(rx == 0);
         return 0;
     }
-    while ((rx / ry).second != U128{0})
+    while ((rx / ry).second != 0)
         rx += p;
     return (rx / ry).first; 
 }

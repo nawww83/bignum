@@ -22,7 +22,7 @@ namespace bignum::generic
     template <class U>
     inline std::pair<U, U> reciprocal_and_extend(U x)
     {
-        assert(x != U{0});
+        assert(x != 0);
         const auto x_old = x;
         const auto i = x.countl_zero();
         x <<= i;
@@ -149,7 +149,7 @@ namespace bignum::u128
         {
             if (shift >= 128u)
                 return 0;
-            U128 result = *this;
+            U128 result {*this};
             int ishift = shift;
             ULOW L{0};
             const bool change_L = ishift < 64 && ishift > 0;
@@ -179,7 +179,7 @@ namespace bignum::u128
         {
             if (shift >= 128u)
                 return 0;
-            U128 result = *this;
+            U128 result {*this};
             int ishift = shift;
             if (ishift < 64)
             {
@@ -213,7 +213,7 @@ namespace bignum::u128
          */
         U128 operator&(const U128 &mask) const
         {
-            U128 result = *this;
+            U128 result {*this};
             result.mLow &= mask.mLow;
             result.mHigh &= mask.mHigh;
             return result;
@@ -233,7 +233,7 @@ namespace bignum::u128
          */
         U128 operator|(const U128 &mask) const
         {
-            U128 result = *this;
+            U128 result {*this};
             result.mLow |= mask.mLow;
             result.mHigh |= mask.mHigh;
             return result;
@@ -253,7 +253,7 @@ namespace bignum::u128
          */
         U128 operator^(const U128 &mask) const
         {
-            U128 result = *this;
+            U128 result {*this};
             result.mLow ^= mask.mLow;
             result.mHigh ^= mask.mHigh;
             return result;
@@ -273,7 +273,7 @@ namespace bignum::u128
          */
         U128 operator~() const
         {
-            U128 result = *this;
+            U128 result {*this};
             result.mLow = ~result.mLow;
             result.mHigh = ~result.mHigh;
             return result;
@@ -363,7 +363,7 @@ namespace bignum::u128
             const U128 &ac = mult_ext(X.low(), Y.low());
             const U128 &ad = mult_ext(X.low(), Y.high());
             const U128 &bc = (X != Y) ? mult_ext(X.high(), Y.low()) : ad;
-            U128 result = ad + bc;
+            U128 result {ad + bc};
             result <<= 64;
             result += ac;
             return result;
@@ -521,7 +521,7 @@ namespace bignum::u128
 #endif
             const auto &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
             const auto &W2 = MAX_ULOW - (Delta / C1).first;
-            auto [Quotient, _] = W1 / W2;
+            auto Quotient {(W1 / W2).first};
             std::tie(Quotient, std::ignore) = Quotient / C1;
             Quotient = make_inverse_1 ? -Quotient : Quotient;
             U128 result = U128{Q} + Quotient - U128{make_inverse_1 ? 1ull : 0ull};
@@ -583,16 +583,9 @@ namespace bignum::u128
         /**
          * @brief Количество битов, требуемое для представления числа.
          */
-        u64 bit_length() const
+        int bit_length() const
         {
-            U128 X = *this;
-            u64 result = 0;
-            while (X != U128{0})
-            {
-                result++;
-                X >>= 1;
-            }
-            return result;
+            return 128 - countl_zero();
         }
 
         /**
@@ -600,9 +593,7 @@ namespace bignum::u128
          */
         int countl_zero() const
         {
-            if (mHigh() == 0)
-                return 64 + mLow.countl_zero();
-            return mHigh.countl_zero();
+            return mHigh == 0 ? 64 + mLow.countl_zero() : mHigh.countl_zero();
         }
 
         /**
@@ -621,24 +612,24 @@ namespace bignum::u128
         {
             constexpr int QUORTER_WIDTH = 32; // Четверть ширины 128-битного числа.
             constexpr ULOW MASK = (ULOW{1}() << QUORTER_WIDTH) - 1;
-            const ULOW &x_low = x & MASK;
-            const ULOW &y_low = y & MASK;
-            const ULOW &x_high = x >> QUORTER_WIDTH;
-            const ULOW &y_high = y >> QUORTER_WIDTH;
-            const ULOW &t1 = x_low * y_low;
-            const ULOW &t = t1 >> QUORTER_WIDTH;
-            const ULOW &t21 = x_low * y_high;
-            const ULOW &q = t21 >> QUORTER_WIDTH;
-            const ULOW &p = t21 & MASK;
-            const ULOW &t22 = x_high * y_low;
-            const ULOW &s = t22 >> QUORTER_WIDTH;
-            const ULOW &r = t22 & MASK;
-            const ULOW &t3 = x_high * y_high;
+            const ULOW x_low = x & MASK;
+            const ULOW y_low = y & MASK;
+            const ULOW x_high = x >> QUORTER_WIDTH;
+            const ULOW y_high = y >> QUORTER_WIDTH;
+            const ULOW t1 = x_low * y_low;
+            const ULOW t = t1 >> QUORTER_WIDTH;
+            const ULOW t21 = x_low * y_high;
+            const ULOW q = t21 >> QUORTER_WIDTH;
+            const ULOW p = t21 & MASK;
+            const ULOW t22 = x_high * y_low;
+            const ULOW s = t22 >> QUORTER_WIDTH;
+            const ULOW r = t22 & MASK;
+            const ULOW t3 = x_high * y_high;
             U128 result{t1};
-            const ULOW &div = (q + s) + ((p + r + t) >> QUORTER_WIDTH);
-            const auto &p1 = t21 << QUORTER_WIDTH;
-            const auto &p2 = t22 << QUORTER_WIDTH;
-            const ULOW &mod = p1 + p2;
+            const ULOW div = (q + s) + ((p + r + t) >> QUORTER_WIDTH);
+            const auto p1 = t21 << QUORTER_WIDTH;
+            const auto p2 = t22 << QUORTER_WIDTH;
+            const ULOW mod = p1 + p2;
             result.mLow += mod;
             result.mHigh += div;
             result.mHigh += t3;

@@ -42,7 +42,7 @@ namespace bignum::ubig
         /**
          * @brief Конструктор с параметром.
          */
-        constexpr UBig(ULOW low) : mLow{low}
+        constexpr UBig(const ULOW& low) : mLow{low}
         {
             ;
         }
@@ -58,7 +58,7 @@ namespace bignum::ubig
         /**
          * @brief Конструктор с параметрами.
          */
-        constexpr UBig(ULOW low, ULOW high) : mLow{low}, mHigh{high}
+        constexpr UBig(const ULOW& low, const ULOW& high) : mLow{low}, mHigh{high}
         {
             ;
         }
@@ -93,7 +93,7 @@ namespace bignum::ubig
         {
             if (shift >= WIDTH)
                 return 0;
-            UBig result = *this;
+            UBig result {*this};
             int ishift = shift;
             ULOW L{0};
             const bool change_L = ishift < WIDTH / 2 && ishift > 0;
@@ -123,7 +123,7 @@ namespace bignum::ubig
         {
             if (shift >= WIDTH)
                 return 0;
-            UBig result = *this;
+            UBig result {*this};
             int ishift = shift;
             if (ishift < WIDTH / 2)
             {
@@ -157,7 +157,7 @@ namespace bignum::ubig
          */
         UBig operator&(const UBig &mask) const
         {
-            UBig result = *this;
+            UBig result {*this};
             result.mLow &= mask.mLow;
             result.mHigh &= mask.mHigh;
             return result;
@@ -177,7 +177,7 @@ namespace bignum::ubig
          */
         UBig operator|(const UBig &mask) const
         {
-            UBig result = *this;
+            UBig result {*this};
             result.mLow |= mask.mLow;
             result.mHigh |= mask.mHigh;
             return result;
@@ -197,7 +197,7 @@ namespace bignum::ubig
          */
         UBig operator^(const UBig &mask) const
         {
-            UBig result = *this;
+            UBig result {*this};
             result.mLow ^= mask.mLow;
             result.mHigh ^= mask.mHigh;
             return result;
@@ -217,7 +217,7 @@ namespace bignum::ubig
          */
         UBig operator~() const
         {
-            UBig result = *this;
+            UBig result {*this};
             result.mLow = ~result.mLow;
             result.mHigh = ~result.mHigh;
             return result;
@@ -307,7 +307,7 @@ namespace bignum::ubig
             const UBig &ac = mult_ext(X.low(), Y.low());
             const UBig &ad = mult_ext(X.low(), Y.high());
             const UBig &bc = (X != Y) ? mult_ext(X.high(), Y.low()) : ad;
-            UBig result = ad + bc;
+            UBig result {ad + bc};
             result <<= WIDTH / 2;
             result += ac;
             return result;
@@ -447,7 +447,7 @@ namespace bignum::ubig
             W1 = make_inverse_1 ? -W1 : W1;
             const ULOW &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
             const ULOW &W2 = MAX_ULOW - (Delta / C1).first;
-            auto [Quotient, _] = W1 / W2;
+            auto Quotient {(W1 / W2).first};
             std::tie(Quotient, std::ignore) = Quotient / C1;
             Quotient = make_inverse_1 ? -Quotient : Quotient;
             UBig result = UBig{Q} + Quotient - UBig{make_inverse_1 ? 1ull : 0ull};
@@ -499,16 +499,17 @@ namespace bignum::ubig
         /**
          * @brief Количество битов, требуемое для представления числа.
          */
-        u64 bit_length() const
+        int bit_length() const
         {
-            UBig X = *this;
-            u64 result = 0;
-            while (X != UBig{0})
-            {
-                result++;
-                X >>= 1;
-            }
-            return result;
+            return WIDTH - countl_zero();
+        }
+
+        /**
+         * @brief Количество непрерывно идущих нулей битового представления числа, начиная с самого старшего бита.
+         */
+        int countl_zero() const
+        {
+            return mHigh == 0 ? WIDTH / 2 + mLow.countl_zero() : mHigh.countl_zero();
         }
 
         /**
@@ -567,9 +568,9 @@ namespace bignum::ubig
             const ULOW &p = t21 & MASK;
             const ULOW &t3 = x_high * x_high;
             UBig result{t1};
-            const ULOW &div = (q + q) + ((p + p + t) >> QUORTER_WIDTH);
+            const ULOW &div = (q << 1) + (((p << 1) + t) >> QUORTER_WIDTH);
             const auto &p1 = t21 << QUORTER_WIDTH;
-            const ULOW &mod = p1 + p1;
+            const ULOW &mod = p1 << 1;
             result.mLow += mod;
             result.mHigh += div;
             result.mHigh += t3;

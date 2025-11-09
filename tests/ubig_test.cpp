@@ -25,7 +25,7 @@ namespace tests_ubig
         } 
         {
             U128 x = U128::get_max_value();
-            auto y = U256::square(x);
+            auto y = U256::square_ext(x);
             assert(y.value() == "115792089237316195423570985008687907852589419931798687112530834793049593217025");
         } 
         //
