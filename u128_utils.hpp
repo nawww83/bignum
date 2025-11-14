@@ -117,7 +117,7 @@ inline U128 mult_mod(const U128& x, const U128& y, const U128& m)
     using namespace bignum::ubig;
     using U256 = UBig<U128, 256>;
     const U256& z = U256::mult_ext(x, y);
-    return (z / m).second;
+    return (z / m).second.low();
 }
 
 }

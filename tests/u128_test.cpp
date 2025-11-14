@@ -210,6 +210,12 @@ namespace tests_u128
             assert((z == U128{2ull, 5ull})); // 92233720368547758082 = 2 + 5 * 2^64
         }
         {
+            U128 x{0, 1ull << 63};
+            U128 y{3};
+            U128 z = x * y; // = xy mod 2^128.
+            assert((z == x));
+        }
+        {
             U128 x{2};
             U128 z = x * x;
             assert(z == U128{4});
@@ -577,16 +583,6 @@ namespace tests_u128
 
     void random_half_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part)
     {
-#ifdef USE_DIV_COUNTERS
-        g_all_half_divs = 0;
-        g_average_loops_when_half_div = 0;
-        g_max_loops_when_half_div = 0;
-        g_min_loops_when_half_div = 128;
-        for (size_t i = 0; i < 128; i++)
-        {
-            g_hist[i] = 0;
-        }
-#endif
         std::cout << "Run half-division random test";
         if (min_value != 1 && max_value != 0)
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
@@ -615,40 +611,9 @@ namespace tests_u128
             {
                 part_counter++;
                 std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_parts << std::endl;
-#ifdef USE_DIV_COUNTERS
-                std::cout << " loops per division: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
-#endif
 // std::cout << "\tlast x // y = " << x.value() << " // " << y() << " = " << q.value() << ", remainder = " << r.value();
 // std::cout << std::endl
 //   << std::flush;
-#ifdef USE_DIV_COUNTERS
-                std::cout << "\thist: ";
-                double sum = 0;
-                for (size_t i = 0; i < 128; i++)
-                {
-                    sum += g_hist[i];
-                }
-                bool was_opened = false;
-                bool was_closed = false;
-                for (size_t i = 0; i < 128; i++)
-                {
-                    if (i > 0 && was_opened)
-                    {
-                        std::cout << ")";
-                        was_closed = true;
-                        was_opened = false;
-                    }
-                    if (g_hist[i])
-                    {
-                        std::cout << (was_closed ? ", " : "") << "(" << i << " : " << static_cast<float>(g_hist[i] / sum);
-                        was_opened = true;
-                        was_closed = false;
-                    }
-                }
-                std::cout << ".";
-                std::cout << std::endl
-                          << std::flush;
-#endif
             }
             assert(is_rem_ok);
             assert(equality);
@@ -660,20 +625,6 @@ namespace tests_u128
 
     void random_full_division_test(uint64_t min_value, uint64_t max_value, int num_of_parts, size_t number_of_iterations_per_part)
     {
-#ifdef USE_DIV_COUNTERS
-        g_all_half_divs = 0;
-        g_average_loops_when_half_div = 0;
-        g_max_loops_when_half_div = 0;
-        g_min_loops_when_half_div = 0;
-        g_all_divs = 0;
-        g_average_loops_when_div = 0;
-        g_max_loops_when_div = 0;
-        g_min_loops_when_div = 128;
-        for (size_t i = 0; i < 128; i++)
-        {
-            g_hist[i] = 0;
-        }
-#endif
         std::cout << "Run full division random test";
         if (min_value != 1 && max_value != 0)
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
@@ -702,40 +653,9 @@ namespace tests_u128
             {
                 part_counter++;
                 std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_parts << std::endl;
-#ifdef USE_DIV_COUNTERS
-                std::cout << " loops per division: full div: ave: " << g_average_loops_when_div << ", min: " << g_min_loops_when_div << ", max: " << g_max_loops_when_div << ", half div: ave: " << g_average_loops_when_half_div << ", min: " << g_min_loops_when_half_div << ", max: " << g_max_loops_when_half_div << ";\n";
-#endif
 // std::cout << "\tlast x // y = " << x.value() << " // " << y.value() << " = " << q.value() << ", remainder = " << r.value();
 // std::cout << std::endl
 //   << std::flush;
-#ifdef USE_DIV_COUNTERS
-                std::cout << "\thist: ";
-                double sum = 0;
-                for (size_t i = 0; i < 128; i++)
-                {
-                    sum += g_hist[i];
-                }
-                bool was_opened = false;
-                bool was_closed = false;
-                for (size_t i = 0; i < 128; i++)
-                {
-                    if (i > 0 && was_opened)
-                    {
-                        std::cout << ")";
-                        was_closed = true;
-                        was_opened = false;
-                    }
-                    if (g_hist[i])
-                    {
-                        std::cout << (was_closed ? ", " : "") << "(" << i << " : " << static_cast<float>(g_hist[i] / sum);
-                        was_opened = true;
-                        was_closed = false;
-                    }
-                }
-                std::cout << ".";
-                std::cout << std::endl
-                          << std::flush;
-#endif
             }
             assert(is_rem_ok);
             assert(equality);
