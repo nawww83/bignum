@@ -33,7 +33,7 @@ int main()
 
         multiplication_test();
 
-        const auto num_of_runned_tests = division_test();
+        division_test();
 
         reciprocal_test();
 

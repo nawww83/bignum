@@ -51,21 +51,6 @@ namespace bignum::generic
 
 namespace bignum::u128
 {
-#ifdef USE_DIV_COUNTERS
-    inline double g_min_loops_when_div = 1. / 0.;
-    inline double g_max_loops_when_div = 0;
-    inline double g_average_loops_when_div = 0;
-
-    inline double g_all_divs = 0;
-
-    inline double g_min_loops_when_half_div = 1. / 0.;
-    inline double g_max_loops_when_half_div = 0;
-    inline double g_average_loops_when_half_div = 0;
-
-    inline double g_all_half_divs = 0;
-
-    inline uint64_t g_hist[128];
-#endif
     /**
      *
      */
@@ -429,7 +414,7 @@ namespace bignum::u128
                     Y_sc <<= n_bits;
                     Q_sc <<= n_bits;
                 }
-                if ((Y_sc + Y_sc) <= X)
+                if (Y_sc <= (X - Y_sc)) // use the subtraction due to possible overflow.
                 {
                     Y_sc <<= 1;
                     Q_sc <<= 1;

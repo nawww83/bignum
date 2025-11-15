@@ -29,7 +29,7 @@ namespace tests_u128
 
     void multiplication_test();
 
-    int division_test();
+    void division_test();
 
     void reciprocal_test();
 

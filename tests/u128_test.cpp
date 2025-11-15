@@ -222,12 +222,10 @@ namespace tests_u128
         }
     }
 
-    int division_test()
+    void division_test()
     {
-        int num_of_runned_tests = 0;
         // Половинчатое деление.
         {
-            num_of_runned_tests++;
             U128 x{8};
             ULOW y{2};
             auto [q, r] = x / y;
@@ -235,7 +233,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{4536ull, 443ull};
             ULOW y{132668453ull};
             auto [q, r] = x / y;
@@ -243,7 +240,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{5ull, 7ull};
             ULOW y{1ull};
             auto [q, r] = x / y;
@@ -252,7 +248,6 @@ namespace tests_u128
         }
         // Деление.
         {
-            num_of_runned_tests++;
             U128 x{0};
             U128 y{4};
             auto [q, r] = x / y;
@@ -260,7 +255,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{1};
             U128 y{1};
             auto [q, r] = x / y;
@@ -268,7 +262,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{8};
             U128 y{2};
             auto [q, r] = x / y;
@@ -276,7 +269,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{3};
             U128 y{5};
             auto [q, r] = x / y;
@@ -284,7 +276,6 @@ namespace tests_u128
             assert(r == U128{3ull});
         }
         {
-            num_of_runned_tests++;
             U128 x{2, 2};
             U128 y{2};
             auto [q, r] = x / y;
@@ -292,7 +283,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{4536ull, 443ull};
             U128 y{132668453ull};
             auto [q, r] = x / y;
@@ -300,7 +290,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{4536ull, 443ull};
             U128 y{5ull, 3ull};
             auto [q, r] = x / y;
@@ -308,7 +297,6 @@ namespace tests_u128
             assert((r == U128{3801ull, 2ull}));
         }
         {
-            num_of_runned_tests++;
             U128 x{4536ull, 443ull};
             U128 y{5ull, 1ull};
             auto [q, r] = x / y;
@@ -316,7 +304,6 @@ namespace tests_u128
             assert(r == U128{2321ull});
         }
         {
-            num_of_runned_tests++;
             U128 x{0, 1ull};
             U128 y{2ull};
             auto [q, r] = x / y;
@@ -324,7 +311,6 @@ namespace tests_u128
             assert(r == U128{0});
         }
         {
-            num_of_runned_tests++;
             U128 x{0, 1ull};
             U128 y{13ull};
             auto [q, r] = x / y;
@@ -332,7 +318,6 @@ namespace tests_u128
             assert(r == U128{3ull});
         }
         {
-            num_of_runned_tests++;
             U128 x{112ull, 1ull};
             U128 y{13ull};
             auto [q, r] = x / y;
@@ -340,14 +325,19 @@ namespace tests_u128
             assert(r == U128{11ull});
         }
         {
-            num_of_runned_tests++;
             U128 x{2ull, 3ull};
             U128 y{3ull, 1ull};
             auto [q, r] = x / y;
             assert(q == U128{2ull});
             assert(r == U128{18446744073709551612ull});
         }
-        return num_of_runned_tests;
+        {
+            // 113343289537830031080300281241835621701 = 287606173964874511799394197485154948483 mod 174262884427044480719093916243319326782
+            U128 x{7570750807943894403ull, 15591161931648043505ull};
+            U128 y{7851060955248855102ull, 9446809893969600230ull};
+            auto [_, r] = x / y;
+            assert((r == U128{18166433926404590917ull, 6144352037678443274ull}));
+        }
     }
 
     void reciprocal_test()
