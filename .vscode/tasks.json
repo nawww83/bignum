@@ -12,6 +12,7 @@
 				"tests/u128_test.cpp",
 				"tests/i128_test.cpp",
 				"tests/ubig_test.cpp",
+				"tests/benchmark.cpp",
 				"${file}",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}"

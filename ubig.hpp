@@ -12,6 +12,7 @@
 #include <algorithm> // std::min, std::max
 #include <tuple>     // std::pair, std::tie
 #include "defines.h" // DIGITS
+#include "u128.hpp"  //  bignum::generic
 
 namespace bignum::ubig
 {
@@ -246,10 +247,11 @@ namespace bignum::ubig
         /**
          * @brief Оператор вычитания.
          */
-        UBig operator-(const UBig &Y) const
+        inline UBig operator-(const UBig &Y) const
         {
             const UBig &X = *this;
-            if (X >= Y) return subtract_if_lhs_more(X, Y);
+            if (X >= Y)
+                return subtract_if_lhs_more(X, Y);
             return subtract_if_lhs_more(UBig::get_max_value(), Y) + 1 + X;
         }
 
@@ -296,16 +298,12 @@ namespace bignum::ubig
         UBig operator*(const UBig &Y) const
         {
             const UBig &X = *this;
-            if (Y.high() == 0)
-                return X * Y.low();
             // x*y = (a + w*b)(c + w*d) = ac + w*(ad + bc) + w*w*bd = (ac + w*(ad + bc)) mod 2^128;
-            const UBig &ac = mult_ext(X.low(), Y.low());
             const UBig &ad = mult_ext(X.low(), Y.high());
             const UBig &bc = (X != Y) ? mult_ext(X.high(), Y.low()) : ad;
             UBig result{ad + bc};
             result <<= WIDTH / 2;
-            result += ac;
-            return result;
+            return result + mult_ext(X.low(), Y.low());
         }
 
         /**
@@ -323,13 +321,10 @@ namespace bignum::ubig
         UBig operator*(const ULOW &Y) const
         {
             const UBig &X = *this;
-            if (X.high() == 0)
-                return mult_ext(X.low(), Y);
             // x*y = (a + w*b)(c + w*0) = ac + w*(0 + bc) = (ac + w*bc) mod 2^128;
             UBig result{mult_ext(X.high(), Y)};
             result <<= (WIDTH / 2);
-            result += mult_ext(X.low(), Y);
-            return result;
+            return result + mult_ext(X.low(), Y);
         }
 
         /**
@@ -358,51 +353,160 @@ namespace bignum::ubig
         T &operator*=(const T &) = delete;
 
         /**
-         * @brief Оператор деления.
-         * @return Частное от деления и остаток.
+         * @brief Оператор половинчатого деления.
+         * @details Авторский метод итеративного деления "широкого" числа на "узкое".
+         * Количество итераций: ~[3, 42], наиболее вероятное количество - 15, среднее - около 21.
+         * @return Частное от деления Q и остаток R.
          */
-        std::pair<UBig, UBig> operator/(const UBig &other) const
+        std::pair<UBig, ULOW> operator/(const ULOW &other) const
         {
             assert(other != 0);
-            UBig X{*this};
-            const auto &Y = other;
+            UBig X = *this;
+            ULOW Y = other;
+            if (Y == 1)
+                return {X, 0};
+            if (X.high() == 0)
+                return X.low() / Y;
             UBig Q{0};
-            auto div_helper = [&X, &Y, &Q]() -> void
+            ULOW R{0};
+            auto rcp{bignum::generic::reciprocal_and_extend(Y)};
+            const auto &rcp_compl = Y - rcp.second;
+            const bool make_inverse = rcp_compl < rcp.second; // Для ускорения сходимости.
+            rcp.first += make_inverse ? ULOW{1} : ULOW{0};
+            const auto X_old = X;
+            for (;;)
             {
-                if (X < Y)
-                    return;
-                UBig Q_sc{1};
-                auto Y_sc{Y};
-                const auto n_bits = X.bit_length() - Y.bit_length() - 1;
-                if (n_bits > 0)
+                const bool x_has_high = X.high() != 0;
+                Q += x_has_high ? UBig::mult_ext(X.high(), rcp.first) : 0;
+                Q += UBig{(X.low() / Y).first};
+                const auto &carry = bignum::generic::smart_remainder_adder(R, X.low(), Y, rcp.second);
+                Q += carry;
+                X = X.high() != 0 ? UBig::mult_ext(X.high(), make_inverse ? rcp_compl : rcp.second) : 0;
+                if (X != 0)
                 {
-                    Y_sc <<= n_bits;
-                    Q_sc <<= n_bits;
+                    Q = make_inverse ? -Q : Q;
+                    R = make_inverse ? Y - R : R;
+                    continue;
                 }
-                if (Y_sc <= (X - Y_sc)) // use the subtraction due to possible overflow.
+                if (Q > X_old) // Коррекция знака.
                 {
-                    Y_sc <<= 1;
-                    Q_sc <<= 1;
+                    Q = -Q;
+                    R = Y - R; // mod Y
+                    Q += R == Y ? 1 : 0;
+                    R = R == Y ? 0 : R;
                 }
-                Q += Q_sc;
-                X -= Y_sc;
-                return;
-            };
-            for (; X >= Y;)
-            {
-                div_helper();
+                break;
             }
-            return {Q, X};
+            return {Q, R};
         }
 
         /**
          * @brief
          */
-        std::pair<UBig, UBig> operator/=(const UBig &Y)
+        std::pair<UBig, ULOW> operator/=(const ULOW &Y)
         {
-            UBig remainder;
+            ULOW remainder;
             std::tie(*this, remainder) = *this / Y;
             return std::make_pair(*this, remainder);
+        }
+
+        /**
+         * @brief operator %
+         * @param other
+         * @return
+         */
+        ULOW operator%(const ULOW &other) const
+        {
+            return (*this / other).second;
+        }
+
+        /**
+         * @brief operator %=
+         * @param other
+         * @return
+         */
+        ULOW &operator%=(const ULOW &other)
+        {
+            *this = *this % other;
+            return *this;
+        }
+
+        /**
+         * @brief Оператор деления.
+         * @details Авторский метод деления двух "широких" чисел, состоящих из двух половинок - "узких" чисел.
+         * Отсутствует "раскачка" алгоритма для "плохих" случаев деления: (A*w + B)/(1*w + D).
+         * @return Частное от деления и остаток.
+         */
+        std::pair<UBig, UBig> operator/(const UBig &other) const
+        {
+            assert(other != UBig{0});
+            UBig X = *this;
+            UBig Y = other;
+            if (X < Y)
+                return {0, X};
+            if (Y.mHigh == 0)
+            {
+                const auto &result = X / Y.mLow;
+                return {result.first, UBig{result.second}};
+            }
+            // Нормализация
+            const int l = std::min(X.countl_zero(), Y.countl_zero());
+            X <<= l;
+            Y <<= l;
+            //
+            constexpr auto MAX_ULOW = ULOW::get_max_value();
+            const auto &[Q, R] = X.mHigh / Y.mHigh;
+            const ULOW &Delta = MAX_ULOW - Y.mLow;
+            const UBig &DeltaQ = mult_ext(Delta, Q);
+            const UBig &sum_1 = UBig{0, R} + DeltaQ;
+            UBig W1{sum_1 - UBig{0, Q}};
+            const bool make_inverse_1 = sum_1 < UBig{0, Q};
+            W1 = make_inverse_1 ? -W1 : W1;
+            const ULOW &C1 = (Y.mHigh < MAX_ULOW) ? Y.mHigh + ULOW{1} : MAX_ULOW;
+            const ULOW &W2 = MAX_ULOW - (Delta / C1).first;
+            auto [Quotient, _] = W1 / W2;
+            std::tie(Quotient, std::ignore) = Quotient / C1;
+            Quotient = make_inverse_1 ? -Quotient : Quotient;
+            UBig result{UBig{Q} + Quotient - UBig{make_inverse_1 ? 1ull : 0ull}};
+            const UBig &N = Y * result.mLow;
+            UBig Error{X - N};
+            const bool negative_error = X < N;
+            while (Error >= Y)
+            {
+                if (negative_error)
+                {
+                    result.dec();
+                    Error += Y;
+                }
+                else
+                {
+                    result.inc();
+                    Error -= Y;
+                }
+            }
+            Error >>= l;
+            return std::make_pair(result, Error);
+        }
+
+        /**
+         * @brief operator %
+         * @param other
+         * @return
+         */
+        UBig operator%(const UBig &other) const
+        {
+            return (*this / other).second;
+        }
+
+        /**
+         * @brief operator %=
+         * @param other
+         * @return
+         */
+        UBig &operator%=(const UBig &other)
+        {
+            *this = *this % other;
+            return *this;
         }
 
         /**
@@ -449,7 +553,7 @@ namespace bignum::ubig
          * @brief Умножение двух N/2-битных чисел с расширением до N-битного числа.
          * @details Авторский алгоритм умножения. Обобщается на любую разрядность.
          */
-        static UBig mult_ext(ULOW x, ULOW y)
+        static UBig mult_ext(const ULOW &x, const ULOW &y)
         {
             constexpr int QUORTER_WIDTH = WIDTH / 4; // Четверть ширины N-битного числа.
             const ULOW &MASK = (ULOW{1} << QUORTER_WIDTH) - ULOW{1};
@@ -480,7 +584,7 @@ namespace bignum::ubig
         /**
          * @brief Возведение в квадрат N/2-битного числа с расширением до N-битного числа.
          */
-        static UBig square_ext(ULOW x)
+        static UBig square_ext(const ULOW &x)
         {
             constexpr int QUORTER_WIDTH = WIDTH / 4; // Четверть ширины N-битного числа.
             const ULOW &MASK = (ULOW{1} << QUORTER_WIDTH) - ULOW{1};
@@ -561,7 +665,7 @@ namespace bignum::ubig
          */
         ULOW mHigh{0};
 
-        static UBig subtract_if_lhs_more(const UBig& X, const UBig& Y)
+        static inline UBig subtract_if_lhs_more(const UBig &X, const UBig &Y)
         {
             return UBig{X.mLow - Y.mLow, X.mHigh - Y.mHigh - (X.mLow < Y.mLow)};
         }

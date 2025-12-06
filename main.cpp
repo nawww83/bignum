@@ -2,10 +2,15 @@
 #include "tests/u128_test.hpp"
 #include "tests/i128_test.hpp"
 #include "tests/ubig_test.hpp"
+#include "tests/benchmark.hpp"
 
 int main()
 {
     constexpr bool RUN_LONG_TESTS = true;
+    {
+        using namespace bench;
+        modulo_poly_calc();
+    }
     {
         using namespace tests_u128;
 
