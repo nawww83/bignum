@@ -459,6 +459,15 @@ namespace tests_u128
             U128 y = modular_inverse(x, m, ok);
             assert(!ok);
         }
+        {
+            // 53118967482164732838376890042435232507, 91146857343605793793601199626440586221;
+            U128 x{7061992801194730235ull, 2879584997217493442ull};
+            U128 m {8275130208243856365ull, 4941081037358187766ull};
+            bool ok;
+            U128 y = modular_inverse(x, m, ok);
+            assert(ok);
+            assert(y.value() == "31343560153576310990713916189340233887");
+        }
     }
 
     void quadratic_residue_test()

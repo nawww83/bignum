@@ -268,6 +268,13 @@ namespace tests_i128
             assert(z == I128{U128{24}});
         }
         {
+            I128 x{U128{123}, Sign{true}};
+            I128 y{U128{2, 2}};
+            I128 z = x * y;
+            const auto& w = U128{246ull, 246ull};
+            assert((z == I128{w, Sign{true}}));
+        }
+        {
             I128 x{U128{1, 1}};
             I128 y{U128{1, 1}};
             I128 z = x * y;
