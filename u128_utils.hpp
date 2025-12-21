@@ -84,24 +84,19 @@ inline U128 modular_inverse(U128 a, U128 m, bool &success)
     success = false;
     if (m == 1)
         return 0;
-    while (a > 1) {
+    while (a > 1)
+    {
         if (m == 0)
             return U128{};
-        // q is quotient
-        const I128& q = (a / m).first;
+        const auto [q, _] = a / m;
         I128 temp = m;
-        // m is remainder now, process same as Euclid's algorithm
         m = a % m;
-        a = temp.unsigned_part(), temp = y;
-        // Update y and x
+        a = temp.unsigned_part();
+        temp = y;
         y = x - q * y;
         x = temp;
     }
-
-    // Make x positive
-    if (x < 0)
-        x += m0;
-
+    x += x < 0 ? m0 : 0;
     success = true;
     return x.unsigned_part();
 }
