@@ -7,7 +7,7 @@
 
 using namespace bignum::u128;
 
-namespace
+namespace   
 {
     auto const seed = std::random_device{}();
 
@@ -19,7 +19,7 @@ namespace
      * ! Исключение сделано для сочетания (1, 0) - в этом случае диапазон неограничен.
      */
     auto roll_ulow = [urbg = std::mt19937{seed},
-                      distr = std::uniform_int_distribution<u64>{}](uint64_t min_value, uint64_t max_value) mutable -> u64
+                      distr = std::uniform_int_distribution<uint64_t>{}](uint64_t min_value, uint64_t max_value) mutable -> uint64_t
     {
         if (min_value != 1ull && max_value != 0ull)
             return distr(urbg) % (max_value - min_value + 1ull) + min_value;
@@ -438,6 +438,26 @@ namespace tests_u128
             U128 m {17, 13};
             U128 z = mult_mod(x, y, m);
             assert(z.value() == "151830893529763232515");
+        }
+    }
+
+    void modular_inverse_test()
+    {
+        using namespace u128_utils;
+        {
+            U128 x {2};
+            U128 m {13};
+            bool ok;
+            U128 y = modular_inverse(x, m, ok);
+            assert(ok);
+            assert(y.value() == "7");
+        }
+        {
+            U128 x {2};
+            U128 m {4};
+            bool ok;
+            U128 y = modular_inverse(x, m, ok);
+            assert(!ok);
         }
     }
 

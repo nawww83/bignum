@@ -48,6 +48,8 @@ int main()
 
         mult_mod_test();
 
+        modular_inverse_test();
+
         quadratic_residue_test();
 
         sqrt_mod_test();

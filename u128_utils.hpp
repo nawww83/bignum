@@ -1,6 +1,7 @@
 #pragma once
 
 #include "u128.hpp"
+#include "i128.hpp"
 #include <cassert>
 #include <utility> // std::pair
 #include "ubig.hpp"
@@ -65,6 +66,44 @@ inline bool is_quadratic_residue(const U128& x, const U128& p)
         y2 += (y + y + 1);
     }
     return false; 
+}
+
+/**
+ * @brief Возвращает величину, обратную x по модулю m.
+ * @param a Входное число.
+ * @param m Модуль.
+ * @param success Флаг успешности нахождения обратной величины.
+ * @return Обратная к x величина, y, так, что y*x = 1 mod m.
+ */
+inline U128 modular_inverse(U128 a, U128 m, bool &success)
+{
+    using namespace bignum::i128;
+    const I128 m0 = m;
+    I128 y = 0;
+    I128 x = 1;
+    success = false;
+    if (m == 1)
+        return 0;
+    while (a > 1) {
+        if (m == 0)
+            return U128{};
+        // q is quotient
+        const I128& q = (a / m).first;
+        I128 temp = m;
+        // m is remainder now, process same as Euclid's algorithm
+        m = a % m;
+        a = temp.unsigned_part(), temp = y;
+        // Update y and x
+        y = x - q * y;
+        x = temp;
+    }
+
+    // Make x positive
+    if (x < 0)
+        x += m0;
+
+    success = true;
+    return x.unsigned_part();
 }
 
 /**
