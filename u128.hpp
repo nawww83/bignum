@@ -15,11 +15,20 @@
 #include "defines.h"
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1920) && defined(_M_X64)
-    #define USE_SOFTWARE_DIVISION
+#define USE_MSVC_INTRINSICS_DIVISION
 #endif
 
-#ifdef USE_SOFTWARE_DIVISION
-    #include <immintrin.h>
+#if defined(_MSC_VER) && defined(_M_X64)
+#define USE_MSVC_INTRINSICS
+#endif
+
+#ifdef USE_MSVC_INTRINSICS_DIVISION
+#include <immintrin.h>
+#endif
+
+#ifdef USE_MSVC_INTRINSICS
+#include <intrin.h>
+#pragma intrinsic(_umul128)
 #endif
 
 namespace bignum::generic
@@ -457,7 +466,7 @@ namespace bignum::u128
             U128 X = *this;
             const auto &Y = other;
             U128 Q{0};
-#if defined(__SIZEOF_INT128__)
+#if defined(__SIZEOF_INT128__) || defined(USE_MSVC_INTRINSICS_DIVISION)
             U128 R;
             Q = divide_u128<true, true>(X, Y, &R);
             return {Q, R};
@@ -579,6 +588,10 @@ namespace bignum::u128
             unsigned __int128 u128_y = y();
             auto z = u128_x * u128_y;
             return U128{static_cast<u64>(z & 0xFFFFFFFFFFFFFFFFULL), static_cast<u64>(z >> 64)};
+#elif defined(USE_MSVC_INTRINSICS)
+            unsigned __int64 c, d;
+            d = _umul128(x(), y(), &c);
+            return U128{d, c};
 #else
             constexpr int QUORTER_WIDTH = 32; // Четверть ширины 128-битного числа.
             constexpr ULOW MASK = (ULOW{1}() << QUORTER_WIDTH) - 1;
@@ -616,6 +629,10 @@ namespace bignum::u128
             unsigned __int128 u128_x = x();
             auto z = u128_x * u128_x;
             return U128{static_cast<u64>(z & 0xFFFFFFFFFFFFFFFFULL), static_cast<u64>(z >> 64)};
+#elif defined(USE_MSVC_INTRINSICS)
+            unsigned __int64 c, d;
+            d = _umul128(x(), x(), &c);
+            return U128{d, c};
 #else
             constexpr int QUORTER_WIDTH = 32; // Четверть ширины 128-битного числа.
             constexpr ULOW MASK = (ULOW{1}() << QUORTER_WIDTH) - 1;
@@ -757,24 +774,25 @@ namespace bignum::u128
                 result.mHigh = static_cast<u64>(quotient >> 64);
             }
             return result;
-#elif defined(USE_SOFTWARE_DIVISION)
+#elif defined(USE_MSVC_INTRINSICS_DIVISION)
             U128 q = div_u128_full(dividend, divisor, remainder_out);
             return q;
 #else
             static_assert(1 == 0 && "Компилятором не поддерживается деление 128-битных чисел.");
 #endif
         }
-#ifdef USE_SOFTWARE_DIVISION
-        static U128 div_u128_full(const U128& dividend, U128 divisor, U128* remainder) // Not tested!
+#ifdef USE_MSVC_INTRINSICS_DIVISION
+        static U128 div_u128_full(const U128 &dividend, U128 divisor, U128 *remainder)
         {
-            if (divisor.mHigh() == 0) {
+            if (divisor.mHigh() == 0)
+            {
                 u64 rem;
                 U128 q = div_u128_half(dividend, divisor.mLow(), &rem);
                 remainder->mLow() = rem;
                 remainder->mHigh() = 0;
                 return q;
             }
-            auto cl = divisor.countl_zero();
+            const auto cl = divisor.countl_zero();
             divisor <<= cl;
             U128 x_2d{dividend.mHigh()};
             U128 tmp{dividend.mLow()};
@@ -785,33 +803,36 @@ namespace bignum::u128
             u64 q = div_u128_cpu(x_2d, divisor.mHigh(), &rem);
             x_2d.mLow() = tmp.mLow();
             x_2d.mHigh() = rem;
-            U128 T = U128::mult_ext(q, divisor.mLow());
-            U128 r = x_2d - T;
-            if (x_2d < T) {
+            const U128& T = U128::mult_ext(q, divisor.mLow());
+            U128 r {x_2d - T};
+            if (x_2d < T)
+            {
                 r += divisor;
                 q -= 1;
             }
-            r >> cl;
+            r >>= cl;
             *remainder = r;
             return q;
         }
-        static U128 div_u128_half(const U128& dividend, u64 divisor, u64* remainder)
+        static U128 div_u128_half(const U128 &dividend, u64 divisor, u64 *remainder)
         {
-            auto cl = std::countl_zero(divisor);
+            const auto cl = std::countl_zero(divisor);
             divisor <<= cl;
             U128 x_2d{dividend.mHigh()};
             U128 tmp{dividend.mLow()};
             x_2d <<= cl;
             tmp <<= cl;
             x_2d.mLow() |= tmp.mHigh();
-            u64 q = div_u128_cpu(x_2d, divisor, remainder);
-            U128 r {tmp.mLow(), *remainder};
-            u64 q1 = div_u128_cpu(r, divisor, remainder);
+            u64 rem;
+            u64 q = div_u128_cpu(x_2d, divisor, &rem);
+            U128 r{tmp.mLow(), rem};
+            u64 q1 = div_u128_cpu(r, divisor, &rem);
             U128 quotient{q1, q};
-            *remainder >>= cl;
+            rem >>= cl;
+            *remainder = rem;
             return quotient;
         }
-        static u64 div_u128_cpu(const U128& dividend, u64 divisor, u64* remainder)
+        static u64 div_u128_cpu(const U128 &dividend, u64 divisor, u64 *remainder)
         {
             unsigned __int64 high = dividend.mHigh();
             unsigned __int64 low = dividend.mLow();
