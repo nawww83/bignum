@@ -449,11 +449,6 @@ namespace bignum::ubig
                 const auto &result = X / Y.mLow;
                 return {result.first, UBig{result.second}};
             }
-            // Нормализация
-            const int l = std::min(X.countl_zero(), Y.countl_zero());
-            X <<= l;
-            Y <<= l;
-            //
             constexpr auto MAX_ULOW = ULOW::get_max_value();
             const auto &[Q, R] = X.mHigh / Y.mHigh;
             const ULOW &Delta = MAX_ULOW - Y.mLow;
@@ -484,7 +479,6 @@ namespace bignum::ubig
                     Error -= Y;
                 }
             }
-            Error >>= l;
             return std::make_pair(result, Error);
         }
 
