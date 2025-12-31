@@ -442,6 +442,11 @@ namespace tests_u128
             U128 y = nroot(x, 17);
             assert(y.value() == "19");
         }
+        {
+            U128 x {8071991882386131446ull, 5373886718148709326ull};
+            U128 y = nroot(x, 17);
+            assert(y.value() == "171");
+        }
     }
 
     void mult_mod_test()
