@@ -109,6 +109,7 @@ inline U128 nroot(const U128& x, unsigned m)
     for (;;) // Метод Ньютона.
     {
         const auto power = int_power_fast(result, m - 1);
+        assert(power != 0); // Из-за особенностей фукнции вычисления степени (по модулю 2^128 может быть 0).
         result = (((m_ext - 1) * result + (x / power).first) / m_ext).first;
         if (result >= old_result) { // Условие простое благодаря выбору начального приближения сверху.
             result = old_result;
