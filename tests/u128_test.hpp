@@ -37,6 +37,8 @@ namespace tests_u128
 
     void sqrt_test();
 
+    void nroot_test();
+
     void mult_mod_test();
 
     void modular_inverse_test();

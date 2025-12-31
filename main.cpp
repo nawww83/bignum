@@ -46,6 +46,8 @@ int main()
 
         sqrt_test();
 
+        nroot_test();
+
         mult_mod_test();
 
         modular_inverse_test();

@@ -52,6 +52,74 @@ inline U128 isqrt(const U128& x)
 }
 
 /**
+ * @brief Целочисленная степень числа.
+ * @details Предполагается, что переполнения не будет, т.е. расчет идет по модулю 2^128.
+ * @param x
+ * @param y
+ * @return
+ */
+inline U128 int_power(const U128& x, unsigned y)
+{
+    U128 result{1};
+    for (unsigned i = 1; i <= y; ++i)
+        result = result * x;
+    return result;
+}
+
+/**
+ * @brief Быстрый алгоритм вычисления целочисленной степени числа.
+ * @details Предполагается, что переполнения не будет, т.е. расчет идет по модулю 2^128.
+ * @param x
+ * @param y
+ * @return
+ */
+inline U128 int_power_fast(const U128& x, unsigned y)
+{
+    U128 exponent {y};
+    U128 base = x;
+    U128 result = 1;
+    while (exponent != 0)
+    {
+        if ((exponent & 1) == 1)
+            result *= base;
+        exponent >>= 1;
+        base *= base;
+    }
+    return result;
+}
+
+
+/**
+ * @brief Целочисленный корень m-й степени из числа.
+ * @param m Степень корня.
+ */
+inline U128 nroot(const U128& x, unsigned m)
+{
+    assert(m > 0);
+    if (x < 2)
+        return x;
+    if (m == 1)
+        return x;
+    int d = x.bit_length() / m; // m > 1
+    const int r = x.bit_length() % m;
+    d = r == 0 ? d : d + 1; // ceil(bit_length(x) / m)
+    auto result = U128{1} << d; // Начальное приближение (сверху).
+    U128 m_ext {m};
+    U128 old_result = result;
+    for (;;) // Метод Ньютона.
+    {
+        const auto power = int_power_fast(result, m - 1);
+        result = (((m_ext - 1) * result + (x / power).first) / m_ext).first;
+        if (result >= old_result) { // Условие простое благодаря выбору начального приближения сверху.
+            result = old_result;
+            break;
+        }
+        old_result = result;
+    }
+    return result;
+}
+
+/**
  * @brief Является ли число x квадратичным вычетом по модулю p.
  */
 inline bool is_quadratic_residue(const U128& x, const U128& p)

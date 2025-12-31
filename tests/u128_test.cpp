@@ -408,6 +408,42 @@ namespace tests_u128
         }
     }
 
+    void nroot_test()
+    {
+        using namespace u128_utils;
+        {
+            U128 x = U128::get_max_value();
+            U128 y = nroot(x, 1);
+            assert(y == x);
+        }
+        {
+            U128 x = U128::get_max_value();
+            U128 y = nroot(x, 2);
+            assert(y.value() == "18446744073709551615");
+        }
+        {
+            U128 x = U128::get_max_value();
+            U128 y = nroot(x, 3);
+            assert(y.value() == "6981463658331");
+        }
+        {
+            U128 x = U128::get_max_value();
+            U128 y = nroot(x, 4);
+            assert(y.value() == "4294967295");
+        }
+        {
+            U128 x = U128::get_max_value();
+            U128 y = nroot(x, 5);
+            assert(y.value() == "50859008");
+        }
+        // 5480386857784802185939 = 19^17
+        {
+            U128 x {1703867893065355987ull, 297ull};
+            U128 y = nroot(x, 17);
+            assert(y.value() == "19");
+        }
+    }
+
     void mult_mod_test()
     {
         using namespace u128_utils;
