@@ -35,9 +35,9 @@
 
 namespace bignum::u128
 {
+    using u64 = uint64_t;
     class U128
     {
-        using u64 = uint64_t;
         u64 mLow{0};
         u64 mHigh{0};
 
@@ -146,30 +146,7 @@ namespace bignum::u128
             u64 hi, lo = _umul128(x, y, &hi);
             return {lo, hi};
 #else
-            constexpr uint32_t Q = 32; // Четверть ширины 128-битного числа.
-            constexpr u64 MASK = (u64{1} << Q) - 1;
-            const u64 x_low = x & MASK;
-            const u64 y_low = y & MASK;
-            const u64 x_high = x >> Q;
-            const u64 y_high = y >> Q;
-            const u64 t1 = x_low * y_low;
-            const u64 t = t1 >> Q;
-            const u64 t21 = x_low * y_high;
-            const u64 q = t21 >> Q;
-            const u64 p = t21 & MASK;
-            const u64 t22 = x_high * y_low;
-            const u64 s = t22 >> Q;
-            const u64 r = t22 & MASK;
-            const u64 t3 = x_high * y_high;
-            U128 result{t1};
-            const u64 div = (q + s) + ((p + r + t) >> Q);
-            const auto p1 = t21 << Q;
-            const auto p2 = t22 << Q;
-            const u64 mod = p1 + p2;
-            result.mLow += mod;
-            result.mHigh += div;
-            result.mHigh += t3;
-            return result;
+           return mult_ext_manual(x, y);
 #endif
         }
 
@@ -185,24 +162,7 @@ namespace bignum::u128
             u64 hi, lo = _umul128(x, x, &hi);
             return {lo, hi};
 #else
-            constexpr uint32_t Q = 32; // Четверть ширины 128-битного числа.
-            constexpr u64 MASK = (u64{1} << Q) - 1;
-            const u64 x_low = x & MASK;
-            const u64 x_high = x >> Q;
-            const u64 t1 = x_low * x_low;
-            const u64 t = t1 >> Q;
-            const u64 t21 = x_low * x_high;
-            const u64 q = t21 >> Q;
-            const u64 p = t21 & MASK;
-            const u64 t3 = x_high * x_high;
-            U128 result{t1};
-            const u64 div = (q << 1) + (((p << 1) + t) >> Q);
-            const auto p1 = t21 << Q;
-            const u64 mod = p1 << 1;
-            result.mLow += mod;
-            result.mHigh += div;
-            result.mHigh += t3;
-            return result;
+           return square_ext_manual(x);
 #endif
         }
 
@@ -539,6 +499,33 @@ namespace bignum::u128
         constexpr unsigned __int128 to_u128() const noexcept { return (static_cast<unsigned __int128>(mHigh) << 64) | mLow; }
 #endif
     };
+
+static inline U128 mult_ext_manual(u64 x, u64 y) noexcept {
+    const u64 x_low  = x & 0xFFFFFFFF;
+    const u64 x_high = x >> 32;
+    const u64 y_low  = y & 0xFFFFFFFF;
+    const u64 y_high = y >> 32;
+    const u64 t1  = x_low * y_low;
+    const u64 t21 = x_low * y_high;
+    const u64 t22 = x_high * y_low;
+    const u64 t3  = x_high * y_high;
+    const u64 mid = (t1 >> 32) + (t21 & 0xFFFFFFFF) + (t22 & 0xFFFFFFFF);
+    return { (t1 & 0xFFFFFFFF) | (mid << 32),
+             t3 + (t21 >> 32) + (t22 >> 32) + (mid >> 32) };
+}
+
+static inline U128 square_ext_manual(u64 x) noexcept {
+    const u64 x_low  = x & 0xFFFFFFFF;
+    const u64 x_high = x >> 32;
+    const u64 t1 = x_low * x_low;
+    const u64 t2 = x_low * x_high;
+    const u64 t3 = x_high * x_high;
+    const u64 t2_x2 = t2 << 1;
+    const u64 t2_carry = t2 >> 63; 
+    const u64 mid = (t1 >> 32) + (t2_x2 & 0xFFFFFFFF);
+    return { (t1 & 0xFFFFFFFF) | (mid << 32),
+             t3 + (mid >> 32) + (t2_x2 >> 32) + (t2_carry << 32) };
+}
 
 }
 

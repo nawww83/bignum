@@ -38,6 +38,8 @@ int main()
 
         multiplication_test();
 
+        mult_ext_test();
+
         division_test();
 
         reciprocal_test();

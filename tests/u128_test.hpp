@@ -29,6 +29,8 @@ namespace tests_u128
 
     void multiplication_test();
 
+    void mult_ext_test();
+
     void division_test();
 
     void reciprocal_test();

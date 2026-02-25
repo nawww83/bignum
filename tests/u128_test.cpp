@@ -223,6 +223,55 @@ namespace tests_u128
         }
     }
 
+    void mult_ext_test()
+    {
+
+    // --- Автоматический тестер ручного алгоритма умножения чисел с расширением разрядности ---
+    auto run_test = [](u64 x, u64 y, const char* label) 
+    {
+        // Вычисляем эталон через встроенный тип __int128
+        unsigned __int128 reference = static_cast<unsigned __int128>(x) * y;
+        u64 exp_h = static_cast<u64>(reference >> 64);
+        u64 exp_l = static_cast<u64>(reference);
+
+        U128 result = (x == y) ? square_ext_manual(x) : mult_ext_manual(x, y);
+
+        if (result.high() == exp_h && result.low() == exp_l) {
+            std::cout << "[OK]   " << label << " (x=" << std::hex << x << ", y=" << y << ")\n";
+        } else {
+            std::cout << "[FAIL] " << label << "\n";
+            std::cout << std::hex << "  Input:    x=" << x << ", y=" << y << "\n";
+            std::cout << "  Expected: {" << exp_h << ", " << exp_l << "}\n";
+            std::cout << "  Got:      {" << result.high() << ", " << result.low() << "}\n" << std::dec;
+            exit(1); // Прекращаем выполнение при первой ошибке
+        }
+    };
+
+    std::cout << "--- Starting Automated Tests with __int128 reference ---\n\n";
+
+    // Граничные кейсы
+    run_test(0, 0, "Zeroes");
+    run_test(0xFFFFFFFFFFFFFFFFULL, 1, "Max * 1");
+    run_test(0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL, "Max * Max");
+    run_test(0xAAAAAAAAAAAAAAAAULL, 0xAAAAAAAAAAAAAAAAULL, "Pattern A Square");
+    run_test(0x5555555555555555ULL, 0x5555555555555555ULL, "Pattern 5 Square");
+    run_test(1ULL << 32, 1ULL << 32, "Boundary 2^32 Square");
+    run_test(1ULL << 63, 2, "High-bit carry mult");
+    
+    // Небольшой стресс-тест на псевдослучайных числах
+    u64 seed_x = 0x123456789ABCDEF0ULL;
+    u64 seed_y = 0xFEDCBA9876543210ULL;
+    for(int i = 0; i < 1000; ++i) {
+        seed_x ^= seed_x << 13; seed_x ^= seed_x >> 7; seed_x ^= seed_x << 17; // xorshift
+        seed_y ^= seed_y << 13; seed_y ^= seed_y >> 7; seed_y ^= seed_y << 17;
+        run_test(seed_x, seed_y, "Random Mult");
+        run_test(seed_x, seed_x, "Random Square");
+    }
+
+    std::cout << "\n" << std::dec << "ALL TESTS (including 2000 random cases) PASSED!\n";
+
+    }
+
     void division_test()
     {
         // Половинчатое деление.
