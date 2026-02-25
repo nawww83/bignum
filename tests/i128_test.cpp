@@ -4,6 +4,7 @@
 #include "../i128_utils.hpp"
 
 using namespace bignum::i128;
+using u64 = uint64_t;
 
 namespace tests_i128
 {
@@ -282,28 +283,28 @@ namespace tests_i128
         }
         {
             I128 x{U128{0, 1}};
-            ULOW y{-1ull};
+            u64 y{-1ull};
             I128 z = x * y;
             assert(!z.is_overflow());
             assert((z == I128{U128{0, 18446744073709551615ull}}));
         }
         {
             I128 x{U128{0, 1}};
-            ULOW y{-1ull};
-            I128 z = y * x;
+            u64 y{-1ull};
+            I128 z = x * y;
             assert(!z.is_overflow());
             assert((z == I128{U128{0, 18446744073709551615ull}}));
         }
         {
             I128 x{U128{1, 1}};
-            ULOW y{-1ull};
+            u64 y{-1ull};
             I128 z = x * y;
             assert(!z.is_overflow());
             assert((z == I128{U128{18446744073709551615ull, 18446744073709551615ull}}));
         }
         {
             I128 x{U128{0, 2}};
-            ULOW y{-1ull};
+            u64 y{-1ull};
             I128 z = x * y;
             assert(z.is_overflow());
         }
@@ -325,42 +326,42 @@ namespace tests_i128
     {
         {
             I128 x{U128{555}};
-            ULOW y{1};
+            u64 y{1};
             const auto &[q, r] = x / y;
             assert(q == I128{555ull});
             assert(r == 0);
         }
         {
             I128 x{U128{555}, Sign{true}};
-            ULOW y{1};
+            u64 y{1};
             const auto &[q, r] = x / y;
             assert(q == -I128{555ull});
             assert(r == 0);
         }
         {
             I128 x{U128{555}};
-            ULOW y{7};
+            u64 y{7};
             const auto &[q, r] = x / y;
             assert(q == I128{79ull});
             assert(r == 2ull);
         }
         {
             I128 x{U128{555}, Sign{true}};
-            ULOW y{7};
+            u64 y{7};
             const auto &[q, r] = x / y;
             assert(q == -I128{80ull});
             assert(r == 5ull);
         }
         {
             I128 x{U128{444}};
-            ULOW y{2};
+            u64 y{2};
             const auto &[q, r] = x / y;
             assert(q == I128{222ull});
             assert(r == 0);
         }
         {
             I128 x{U128{444}, Sign{true}};
-            ULOW y{2};
+            u64 y{2};
             const auto &[q, r] = x / y;
             assert(q == -I128{222ull});
             assert(r == 0);

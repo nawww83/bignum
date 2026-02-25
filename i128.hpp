@@ -7,7 +7,6 @@
 #include "u128.hpp"     // U128
 #include "sign.hpp"     // Sign
 #include "singular.hpp" // Singular
-#include "ulow.hpp"     // low64::ULOW
 #include "defines.h"
 
 #pragma once
@@ -19,11 +18,6 @@ namespace bignum::i128
     using Singular = singular::Singular<uint16_t>;
 
     using u64 = uint64_t;
-
-    /**
-     * @brief Тип половинки числа.
-     */
-    using ULOW = low64::ULOW;
 
     /**
      * Класс для арифметики 128-битных знаковых целых чисел с переполнением, основанный на классе беззнаковых чисел U128 и знаковом манипуляторе.
@@ -398,10 +392,10 @@ namespace bignum::i128
         /**
          * @brief Оператор половинчатого умножения.
          */
-        I128 operator*(const ULOW &rhs) const
+        I128 operator*(u64 rhs) const noexcept
         {
             const I128 &X = *this;
-            const ULOW &Y = rhs;
+            const u64 Y = rhs;
             if (X.is_overflow())
             {
                 I128 result;
@@ -424,7 +418,7 @@ namespace bignum::i128
         /**
          * @brief Оператор умножения.
          */
-        I128 operator*(const I128 &rhs) const
+        I128 operator*(const I128 &rhs) const noexcept
         {
             const I128 &X = *this;
             const I128 &Y = rhs;
@@ -451,11 +445,11 @@ namespace bignum::i128
         /**
          * @brief Оператор половинчатого деления.
          */
-        std::pair<I128, ULOW> operator/(const ULOW &rhs) const
+        std::pair<I128, u64> operator/(const u64 rhs) const
         {
             assert(rhs != 0);
             const I128 &X = *this;
-            const ULOW &Y = rhs;
+            const u64 Y = rhs;
             if (X.is_overflow())
             {
                 I128 result;
@@ -468,7 +462,8 @@ namespace bignum::i128
                 result.set_nan();
                 return {result, 0};
             }
-            const auto& [q, r] = X.mUnsigned / Y;
+            const auto q = X.mUnsigned / Y;
+            const auto r = X.mUnsigned % Y;
             auto Q = I128{q, X.mSign};
             auto R = X - Q * Y;
             if (R.is_negative())
@@ -499,7 +494,8 @@ namespace bignum::i128
                 result.set_nan();
                 return {result, 0};
             }
-            const auto& [q, r] = X.mUnsigned / Y.mUnsigned;
+            const auto q = X.mUnsigned / Y.mUnsigned;
+            const auto r = X.mUnsigned % Y.mUnsigned;
             auto Q = I128{q, X.mSign ^ Y.mSign};
             auto R = X - Q * Y;
             if (!R.is_zero() && (R.mSign ^ Y.mSign)())
@@ -513,9 +509,9 @@ namespace bignum::i128
         /**
          * @brief Количество битов, требуемое для представления числа.
          */
-        u64 bit_length() const
+        u64 bit_width() const
         {
-            return mUnsigned.bit_length();
+            return mUnsigned.bit_width();
         }
 
         /**
@@ -559,7 +555,7 @@ namespace bignum::i128
                 if (d < 0)
                     return result;
                 result.push_back(DIGITS[d]);
-                X = X.div10();
+                X.div10();
             }
             if (!result.empty() && this->mSign())
             {

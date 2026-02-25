@@ -7,7 +7,7 @@ using namespace bignum;
 
 namespace bench {
     using U128 = u128::U128;
-    using U256 = ubig::UBig<U128, 256>;
+    using U256 = UBig<U128>;
 
     U128 poly_mod(const U128& x, const U128& p) {
         U256 y = U256::square_ext(x);
