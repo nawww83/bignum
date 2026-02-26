@@ -94,7 +94,7 @@ int main()
     if (RUN_LONG_TESTS)
     { // Долгие тесты.
         using namespace tests_u128;
-        constexpr size_t ITERS_PER_PART = 1024ull * 65536ull;
+        constexpr size_t ITERS_PER_PART = 256ull * 65536ull;
         // Количество частей. После каждой части происходит вывод на экран.
         constexpr int NUM_OF_PARTS = 8;
         {

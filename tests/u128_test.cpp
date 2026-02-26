@@ -227,7 +227,7 @@ namespace tests_u128
     {
 
     // --- Автоматический тестер ручного алгоритма умножения чисел с расширением разрядности ---
-    auto run_test = [](u64 x, u64 y, const char* label) 
+    auto run_test = [](u64 x, u64 y, const char* label, bool show = true) 
     {
         // Вычисляем эталон через встроенный тип __int128
         unsigned __int128 reference = static_cast<unsigned __int128>(x) * y;
@@ -237,7 +237,8 @@ namespace tests_u128
         U128 result = (x == y) ? square_ext_manual(x) : mult_ext_manual(x, y);
 
         if (result.high() == exp_h && result.low() == exp_l) {
-            std::cout << "[OK]   " << label << " (x=" << std::hex << x << ", y=" << y << ")\n";
+            if (show)
+                std::cout << "[OK]   " << label << " (x=" << std::hex << x << ", y=" << y << ")\n";
         } else {
             std::cout << "[FAIL] " << label << "\n";
             std::cout << std::hex << "  Input:    x=" << x << ", y=" << y << "\n";
@@ -264,11 +265,11 @@ namespace tests_u128
     for(int i = 0; i < 1000; ++i) {
         seed_x ^= seed_x << 13; seed_x ^= seed_x >> 7; seed_x ^= seed_x << 17; // xorshift
         seed_y ^= seed_y << 13; seed_y ^= seed_y >> 7; seed_y ^= seed_y << 17;
-        run_test(seed_x, seed_y, "Random Mult");
-        run_test(seed_x, seed_x, "Random Square");
+        run_test(seed_x, seed_y, "Random Mult", false);
+        run_test(seed_x, seed_x, "Random Square", false);
     }
 
-    std::cout << "\n" << std::dec << "ALL TESTS (including 2000 random cases) PASSED!\n";
+    std::cout << "\n" << std::dec << "ALL TESTS (including some random cases) PASSED!\n";
 
     }
 
@@ -732,7 +733,7 @@ namespace tests_u128
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
             std::cout << ": any values." << std::endl;
-        std::cout << "..." << std::flush;
+        std::cout << "...\n" << std::flush;
         uint64_t counter = 0;
         int part_counter = 0;
         for (;;)
@@ -775,7 +776,7 @@ namespace tests_u128
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
             std::cout << ": any values." << std::endl;
-        std::cout << "..." << std::flush;
+        std::cout << "...\n" << std::flush;
         uint64_t counter = 0;
         int part_counter = 0;
         for (;;)
