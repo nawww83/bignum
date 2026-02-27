@@ -20,6 +20,8 @@ int main()
 
         string_value_test();
 
+        testU128ToString();
+
         cmp_operator_test();
 
         shift_right_operator_test();

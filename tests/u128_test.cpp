@@ -8,7 +8,7 @@
 using namespace bignum::u128;
 using u64 = uint64_t;
 
-namespace   
+namespace
 {
     auto const seed = std::random_device{}();
 
@@ -20,7 +20,7 @@ namespace
      * ! Исключение сделано для сочетания (1, 0) - в этом случае диапазон неограничен.
      */
     auto roll_u64 = [urbg = std::mt19937{seed},
-                      distr = std::uniform_int_distribution<uint64_t>{}](uint64_t min_value, uint64_t max_value) mutable -> uint64_t
+                     distr = std::uniform_int_distribution<uint64_t>{}](uint64_t min_value, uint64_t max_value) mutable -> uint64_t
     {
         if (min_value != 1ull && max_value != 0ull)
             return distr(urbg) % (max_value - min_value + 1ull) + min_value;
@@ -57,6 +57,99 @@ namespace tests_u128
             const auto &x_str = x.toString();
             assert(x_str == "5921404847660766068859");
         }
+    }
+
+    void testU128ToString()
+    {
+        auto check = [](U128 val, const std::string &expected)
+        {
+            std::string res = val.toString();
+            if (res == expected)
+            {
+                printf("[OK]  %s\n", res.c_str());
+            }
+            else
+            {
+                printf("[FAIL] Expected: %s, Got: %s\n", expected.c_str(), res.c_str());
+                exit(1);
+            }
+        };
+
+        printf("--- Тестирование U128::toString() ---\n");
+
+        auto check_hardcoded = [&]() {
+            unsigned __int128 raw = 1;
+            for(int i = 0; i < 25; ++i) raw *= 10; // Генерируем 10^25 программно
+
+            U128 ten25;
+            ten25.low() = (uint64_t)raw;
+            ten25.high() = (uint64_t)(raw >> 64);
+
+            std::string res = ten25.toString();
+            if (res == "10000000000000000000000000") {
+                printf("[OK] Hardcoded 10^25\n");
+            } else {
+                printf("[FAIL] Hardcoded 10^25: %s\n", res.c_str());
+                exit(1);
+            }
+        };
+
+        check_hardcoded();
+
+
+        // 1. Базовые случаи
+        check({0, 0}, "0");
+        check({1, 0}, "1");
+        check({999, 0}, "999");
+
+        // 2. Граница 64 бит (2^64)
+        // mLow = 0, mHigh = 1
+        check({0, 1}, "18446744073709551616");
+
+        // 3. Граница вашего div_val (10^19)
+        check({10000000000000000000ULL, 0}, "10000000000000000000");
+        check({9999999999999999999ULL, 0}, "9999999999999999999");
+
+        // 4. Случай с "внутренними" нулями в блоках (самый коварный)
+        // 10^19 + 1: должно быть '1' и '0000000000000000001'
+        U128 ten19_plus_1 = {1, 0}; // Это чуть больше чем 10^19, если mLow=1
+        // Чтобы получить ровно 10^19 + 1, нужно:
+        U128 t1 = {1, 0};
+        t1.low() = 10000000000000000001ULL;
+        // Но 10^19 + 1 не влезет в u64, поэтому проверим 10^19 + 7:
+        check({10000000000000000007ULL, 0}, "10000000000000000007");
+
+        // 5. Большое число с нулями между блоками
+        // Тест: (2 * 10^19) + 5
+        // Это число равно 20000000000000000005. 
+        // В 128-битном виде это: 
+        // high = 1, low = 1553255926290448389 (результат 2e19 - 2^64)
+        U128 complex;
+        complex.high() = 1; 
+        complex.low() = 1553255926290448389ULL; 
+
+        check(complex, "20000000000000000005");
+        // Просто возьмем число гарантированно больше 10^19
+        U128 big = {0, 2}; // 2 * 2^64 ~ 3.6e19
+        check(big, "36893488147419103232");
+
+        // 6. Максимальное значение U128 (2^128 - 1)
+        check({0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL},
+              "340282366920938463463374607431768211455");
+
+        // 7. 10^25 (ровно 25 нулей)
+        U128 ten25;
+        ten25.high() = 542101ULL;
+        ten25.low() = 1590897978359414784ULL;
+        check(ten25, "10000000000000000000000000");
+
+        // 8. 10^38 (почти предел U128)
+        U128 ten38;
+        ten38.high() = 5421010862427522170ULL;
+        ten38.low() = 687399551400673280ULL;
+        check(ten38, "100000000000000000000000000000000000000");
+
+        printf("--- Тестирование завершено ---\n");
     }
 
     void cmp_operator_test()
@@ -226,51 +319,60 @@ namespace tests_u128
     void mult_ext_test()
     {
 
-    // --- Автоматический тестер ручного алгоритма умножения чисел с расширением разрядности ---
-    auto run_test = [](u64 x, u64 y, const char* label, bool show = true) 
-    {
-        // Вычисляем эталон через встроенный тип __int128
-        unsigned __int128 reference = static_cast<unsigned __int128>(x) * y;
-        u64 exp_h = static_cast<u64>(reference >> 64);
-        u64 exp_l = static_cast<u64>(reference);
+        // --- Автоматический тестер ручного алгоритма умножения чисел с расширением разрядности ---
+        auto run_test = [](u64 x, u64 y, const char *label, bool show = true)
+        {
+            // Вычисляем эталон через встроенный тип __int128
+            unsigned __int128 reference = static_cast<unsigned __int128>(x) * y;
+            u64 exp_h = static_cast<u64>(reference >> 64);
+            u64 exp_l = static_cast<u64>(reference);
 
-        U128 result = (x == y) ? square_ext_manual(x) : mult_ext_manual(x, y);
+            U128 result = (x == y) ? square_ext_manual(x) : mult_ext_manual(x, y);
 
-        if (result.high() == exp_h && result.low() == exp_l) {
-            if (show)
-                std::cout << "[OK]   " << label << " (x=" << std::hex << x << ", y=" << y << ")\n";
-        } else {
-            std::cout << "[FAIL] " << label << "\n";
-            std::cout << std::hex << "  Input:    x=" << x << ", y=" << y << "\n";
-            std::cout << "  Expected: {" << exp_h << ", " << exp_l << "}\n";
-            std::cout << "  Got:      {" << result.high() << ", " << result.low() << "}\n" << std::dec;
-            exit(1); // Прекращаем выполнение при первой ошибке
+            if (result.high() == exp_h && result.low() == exp_l)
+            {
+                if (show)
+                    std::cout << "[OK]   " << label << " (x=" << std::hex << x << ", y=" << y << ")\n";
+            }
+            else
+            {
+                std::cout << "[FAIL] " << label << "\n";
+                std::cout << std::hex << "  Input:    x=" << x << ", y=" << y << "\n";
+                std::cout << "  Expected: {" << exp_h << ", " << exp_l << "}\n";
+                std::cout << "  Got:      {" << result.high() << ", " << result.low() << "}\n"
+                          << std::dec;
+                exit(1); // Прекращаем выполнение при первой ошибке
+            }
+        };
+
+        std::cout << "--- Starting Automated Tests with __int128 reference ---\n\n";
+
+        // Граничные кейсы
+        run_test(0, 0, "Zeroes");
+        run_test(0xFFFFFFFFFFFFFFFFULL, 1, "Max * 1");
+        run_test(0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL, "Max * Max");
+        run_test(0xAAAAAAAAAAAAAAAAULL, 0xAAAAAAAAAAAAAAAAULL, "Pattern A Square");
+        run_test(0x5555555555555555ULL, 0x5555555555555555ULL, "Pattern 5 Square");
+        run_test(1ULL << 32, 1ULL << 32, "Boundary 2^32 Square");
+        run_test(1ULL << 63, 2, "High-bit carry mult");
+
+        // Небольшой стресс-тест на псевдослучайных числах
+        u64 seed_x = 0x123456789ABCDEF0ULL;
+        u64 seed_y = 0xFEDCBA9876543210ULL;
+        for (int i = 0; i < 1000; ++i)
+        {
+            seed_x ^= seed_x << 13;
+            seed_x ^= seed_x >> 7;
+            seed_x ^= seed_x << 17; // xorshift
+            seed_y ^= seed_y << 13;
+            seed_y ^= seed_y >> 7;
+            seed_y ^= seed_y << 17;
+            run_test(seed_x, seed_y, "Random Mult", false);
+            run_test(seed_x, seed_x, "Random Square", false);
         }
-    };
 
-    std::cout << "--- Starting Automated Tests with __int128 reference ---\n\n";
-
-    // Граничные кейсы
-    run_test(0, 0, "Zeroes");
-    run_test(0xFFFFFFFFFFFFFFFFULL, 1, "Max * 1");
-    run_test(0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFFFFFFFFFFULL, "Max * Max");
-    run_test(0xAAAAAAAAAAAAAAAAULL, 0xAAAAAAAAAAAAAAAAULL, "Pattern A Square");
-    run_test(0x5555555555555555ULL, 0x5555555555555555ULL, "Pattern 5 Square");
-    run_test(1ULL << 32, 1ULL << 32, "Boundary 2^32 Square");
-    run_test(1ULL << 63, 2, "High-bit carry mult");
-    
-    // Небольшой стресс-тест на псевдослучайных числах
-    u64 seed_x = 0x123456789ABCDEF0ULL;
-    u64 seed_y = 0xFEDCBA9876543210ULL;
-    for(int i = 0; i < 1000; ++i) {
-        seed_x ^= seed_x << 13; seed_x ^= seed_x >> 7; seed_x ^= seed_x << 17; // xorshift
-        seed_y ^= seed_y << 13; seed_y ^= seed_y >> 7; seed_y ^= seed_y << 17;
-        run_test(seed_x, seed_y, "Random Mult", false);
-        run_test(seed_x, seed_x, "Random Square", false);
-    }
-
-    std::cout << "\n" << std::dec << "ALL TESTS (including some random cases) PASSED!\n";
-
+        std::cout << "\n"
+                  << std::dec << "ALL TESTS (including some random cases) PASSED!\n";
     }
 
     void division_test()
@@ -468,19 +570,19 @@ namespace tests_u128
     {
         using namespace u128_utils;
         {
-            U128 x {1};
+            U128 x{1};
             U128 y = isqrt(x);
             assert(y.toString() == "1");
         }
         {
-            U128 x {4};
+            U128 x{4};
             bool exact;
             U128 y = isqrt(x, exact);
             assert(y.toString() == "2");
             assert(exact);
         }
         {
-            U128 x {5};
+            U128 x{5};
             bool exact;
             U128 y = isqrt(x, exact);
             assert(y.toString() == "2");
@@ -523,12 +625,12 @@ namespace tests_u128
         }
         // 5480386857784802185939 = 19^17
         {
-            U128 x {1703867893065355987ull, 297ull};
+            U128 x{1703867893065355987ull, 297ull};
             U128 y = nroot(x, 17);
             assert(y.toString() == "19");
         }
         {
-            U128 x {8071991882386131446ull, 5373886718148709326ull};
+            U128 x{8071991882386131446ull, 5373886718148709326ull};
             U128 y = nroot(x, 17);
             assert(y.toString() == "171");
         }
@@ -538,30 +640,30 @@ namespace tests_u128
     {
         using namespace u128_utils;
         {
-            U128 x {1, 1};
-            U128 y {1, 1};
+            U128 x{1, 1};
+            U128 y{1, 1};
             U128 m = U128::max();
             U128 z = mult_mod(x, y, m);
             assert(z.toString() == "36893488147419103234");
         }
         {
-            U128 x {1, 1};
-            U128 y {1, 1};
-            U128 m {1, 1};
+            U128 x{1, 1};
+            U128 y{1, 1};
+            U128 m{1, 1};
             U128 z = mult_mod(x, y, m);
             assert(z == U128{0});
         }
         {
-            U128 x {3, 1};
-            U128 y {1, 1};
-            U128 m {1, 1};
+            U128 x{3, 1};
+            U128 y{1, 1};
+            U128 m{1, 1};
             U128 z = mult_mod(x, y, m);
             assert(z == U128{0});
         }
         {
-            U128 x {11, 5};
-            U128 y {3, 7};
-            U128 m {17, 13};
+            U128 x{11, 5};
+            U128 y{3, 7};
+            U128 m{17, 13};
             U128 z = mult_mod(x, y, m);
             assert(z.toString() == "151830893529763232515");
         }
@@ -571,16 +673,16 @@ namespace tests_u128
     {
         using namespace u128_utils;
         {
-            U128 x {2};
-            U128 m {13};
+            U128 x{2};
+            U128 m{13};
             bool ok;
             U128 y = modular_inverse(x, m, ok);
             assert(ok);
             assert(y.toString() == "7");
         }
         {
-            U128 x {2};
-            U128 m {4};
+            U128 x{2};
+            U128 m{4};
             bool ok;
             U128 y = modular_inverse(x, m, ok);
             assert(!ok);
@@ -588,7 +690,7 @@ namespace tests_u128
         {
             // 53118967482164732838376890042435232507, 91146857343605793793601199626440586221;
             U128 x{7061992801194730235ull, 2879584997217493442ull};
-            U128 m {8275130208243856365ull, 4941081037358187766ull};
+            U128 m{8275130208243856365ull, 4941081037358187766ull};
             bool ok;
             U128 y = modular_inverse(x, m, ok);
             assert(ok);
@@ -694,35 +796,35 @@ namespace tests_u128
             const U128 y{3ull};
             const U128 p{13ull};
             auto q = div_mod(x, y, p);
-            assert(((q*y) % p) == (x % p));
+            assert(((q * y) % p) == (x % p));
         }
         {
             const U128 x{35ull};
             const U128 y{7ull};
             const U128 p{13ull};
             auto q = div_mod(x, y, p);
-            assert(((q*y) % p) == (x % p));
+            assert(((q * y) % p) == (x % p));
         }
         {
             const U128 x{14ull};
             const U128 y{8ull};
             const U128 p{7ull};
             auto q = div_mod(x, y, p);
-            assert(((q*y) % p) == (x % p));
+            assert(((q * y) % p) == (x % p));
         }
         {
             const U128 x{0ull};
             const U128 y{8ull};
             const U128 p{8ull};
             auto q = div_mod(x, y, p);
-            assert(((q*y) % p) == (x % p));
+            assert(((q * y) % p) == (x % p));
         }
         {
             const U128 x{16ull};
             const U128 y{8ull};
             const U128 p{8ull};
             auto q = div_mod(x, y, p);
-            assert(((q*y) % p) == (x % p));
+            assert(((q * y) % p) == (x % p));
         }
     }
 
@@ -733,7 +835,8 @@ namespace tests_u128
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
             std::cout << ": any values." << std::endl;
-        std::cout << "...\n" << std::flush;
+        std::cout << "...\n"
+                  << std::flush;
         uint64_t counter = 0;
         int part_counter = 0;
         for (;;)
@@ -757,9 +860,9 @@ namespace tests_u128
             {
                 part_counter++;
                 std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_parts << std::endl;
-// std::cout << "\tlast x // y = " << x.toString() << " // " << y() << " = " << q.toString() << ", remainder = " << r.toString();
-// std::cout << std::endl
-//   << std::flush;
+                // std::cout << "\tlast x // y = " << x.toString() << " // " << y() << " = " << q.toString() << ", remainder = " << r.toString();
+                // std::cout << std::endl
+                //   << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);
@@ -776,7 +879,8 @@ namespace tests_u128
             std::cout << ": [" << static_cast<int64_t>(min_value) << "..." << max_value << "]\n";
         else
             std::cout << ": any values." << std::endl;
-        std::cout << "...\n" << std::flush;
+        std::cout << "...\n"
+                  << std::flush;
         uint64_t counter = 0;
         int part_counter = 0;
         for (;;)
@@ -800,9 +904,9 @@ namespace tests_u128
             {
                 part_counter++;
                 std::cout << "ok: counter: " << counter << ", part " << part_counter << " from: " << num_of_parts << std::endl;
-// std::cout << "\tlast x // y = " << x.toString() << " // " << y.toString() << " = " << q.toString() << ", remainder = " << r.toString();
-// std::cout << std::endl
-//   << std::flush;
+                // std::cout << "\tlast x // y = " << x.toString() << " // " << y.toString() << " = " << q.toString() << ", remainder = " << r.toString();
+                // std::cout << std::endl
+                //   << std::flush;
             }
             assert(is_rem_ok);
             assert(equality);

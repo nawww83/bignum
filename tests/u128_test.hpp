@@ -11,6 +11,8 @@ namespace tests_u128
 
     void string_value_test();
 
+    void testU128ToString();
+
     void cmp_operator_test();
 
     void shift_right_operator_test();

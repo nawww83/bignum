@@ -537,32 +537,19 @@ namespace bignum::i128
         /**
          * @brief Возвращает строковое представление числа.
          */
-        std::string value() const
+        [[nodiscard]] std::string toString() const
         {
-            std::string result;
-            if (this->is_nan())
-            {
-                return "nan";
+            if (mSingular.is_nan()) return "nan";
+            if (mSingular.is_overflow()) return "inf";
+            if (mUnsigned == U128{0}) return "0";
+
+            std::string res = mUnsigned.toString();
+            if (mSign()) {
+                // Чтобы избежать лишних копирований, можно использовать конкатенацию,
+                // но большинство современных компиляторов оптимизируют это.
+                return "-" + res; 
             }
-            if (this->is_overflow())
-            {
-                return "inf";
-            }
-            U128 X = this->mUnsigned;
-            while (X != U128{0})
-            {
-                const int d = X.mod10();
-                if (d < 0)
-                    return result;
-                result.push_back(DIGITS[d]);
-                X.div10();
-            }
-            if (!result.empty() && this->mSign())
-            {
-                result.push_back('-');
-            }
-            std::reverse(result.begin(), result.end());
-            return !result.empty() ? result : "0";
+            return res;
         }
 
     private:

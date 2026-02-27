@@ -17,32 +17,32 @@ namespace tests_i128
     {
         {
             I128 x{1};
-            const auto &x_str = x.value();
+            const auto &x_str = x.toString();
             assert(x_str == "1");
         }
         {
             auto x = -I128{1};
-            const auto &x_str = x.value();
+            const auto &x_str = x.toString();
             assert(x_str == "-1");
         }
         {
             auto x = -I128{0};
-            const auto &x_str = x.value();
+            const auto &x_str = x.toString();
             assert(x_str == "0");
         }
         {
             auto x = -I128{0, 1};
-            const auto &x_str = x.value();
+            const auto &x_str = x.toString();
             assert(x_str == "-18446744073709551616");
         }
         {
             auto x = I128{U128{1}, Sign{false}, Singular{true}};
-            const auto &x_str = x.value();
+            const auto &x_str = x.toString();
             assert(x_str == "inf");
         }
         {
             auto x = I128{U128{1}, Sign{false}, Singular{false, true}};
-            const auto &x_str = x.value();
+            const auto &x_str = x.toString();
             assert(x_str == "nan");
         }
     }

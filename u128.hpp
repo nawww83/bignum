@@ -146,7 +146,7 @@ namespace bignum::u128
             u64 hi, lo = _umul128(x, y, &hi);
             return {lo, hi};
 #else
-           return mult_ext_manual(x, y);
+            return mult_ext_manual(x, y);
 #endif
         }
 
@@ -162,7 +162,7 @@ namespace bignum::u128
             u64 hi, lo = _umul128(x, x, &hi);
             return {lo, hi};
 #else
-           return square_ext_manual(x);
+            return square_ext_manual(x);
 #endif
         }
 
@@ -285,7 +285,7 @@ namespace bignum::u128
         [[nodiscard]] constexpr U128 operator^(const U128 &other) const noexcept { return U128(*this) ^= other; }
 
         // --- Логические проверки ---
-        // Позволяет писать: if (val), if (!val), val && other, val ||宣 other
+        // Позволяет писать: if (val), if (!val), val && other, val || other
         [[nodiscard]] constexpr explicit operator bool() const noexcept
         {
             return mLow != 0 || mHigh != 0;
@@ -355,143 +355,175 @@ namespace bignum::u128
             return 128 - countl_zero();
         }
 
-        /**
-         * @brief Возвращает остаток от деления числа на 10.
-         * @return Цифра от 0 до 9.
-         */
-        [[nodiscard]] constexpr int mod10() const noexcept
-        {
-#if defined(__SIZEOF_INT128__)
-            // Для GCC/Clang это превратится в одну инструкцию деления или оптимизированное умножение
-            unsigned __int128 val = (static_cast<unsigned __int128>(mHigh) << 64) | mLow;
-            return static_cast<int>(val % 10u);
-#else
-            // Для MSVC используем наш быстрый путь деления 128/64
-            u64 rem;
-            // Нам не нужно частное, поэтому вызываем только логику получения остатка
-            _udiv128(mHigh % 10u, mLow, 10u, &rem);
-            return static_cast<int>(rem);
-#endif
-        }
-
-        /**
-         * @brief Быстрое деление на 10 (целочисленное).
-         * Изменяет объект на месте.
-         */
-        constexpr void div10() noexcept
-        {
-#if defined(__SIZEOF_INT128__)
-            // Ветка для GCC/Clang: компилятор превратит это в "магическое умножение"
-            unsigned __int128 val = to_u128();
-            val /= 10u;
-            mLow = static_cast<u64>(val);
-            mHigh = static_cast<u64>(val >> 64);
-#else
-            // Ветка для MSVC: используем цепочку из двух аппаратных делений 128/64
-            u64 dummy_rem;
-            // 1. Делим старшую часть: mHigh / 10
-            // Остаток от этого деления (mHigh % 10) становится префиксом для младшей части
-            u64 new_high = _udiv128(0, mHigh, 10u, &dummy_rem);
-
-            // 2. Делим младшую часть вместе с остатком от старшей: (rem:mLow) / 10
-            u64 new_low = _udiv128(dummy_rem, mLow, 10u, &dummy_rem);
-
-            mHigh = new_high;
-            mLow = new_low;
-#endif
-        }
-
         template <bool make_quotient, bool make_remainder>
         static U128 divide(const U128 &dividend, const U128 &divisor, U128 *rem_out)
         {
+            // --- ПУТЬ 1: Нативная поддержка __int128 (GCC/Clang) ---
 #if defined(__SIZEOF_INT128__)
             unsigned __int128 a = dividend.to_u128(), b = divisor.to_u128();
             if constexpr (make_remainder)
+            {
                 if (rem_out)
                 {
                     unsigned __int128 r = a % b;
                     *rem_out = {static_cast<u64>(r), static_cast<u64>(r >> 64)};
                 }
+            }
             if constexpr (make_quotient)
             {
                 unsigned __int128 q = a / b;
                 return {static_cast<u64>(q), static_cast<u64>(q >> 64)};
             }
             return {0, 0};
+
 #else
+            // --- ПУТЬ 2: Ручная логика (MSVC или архитектуры без __int128) ---
+
+            // Лямбда для деления 128/64 -> 64
+            auto udiv128_64 = [](u64 high, u64 low, u64 d, u64 *r) -> u64
+            {
+#if defined(USE_MSVC_INTRINSICS_DIVISION)
+                return _udiv128(high, low, d, r);
+#else
+                // Эмуляция деления "в столбик" для систем без интринсика
+                u64 rem = high;
+                u64 res_hi = rem / d; // В данном алгоритме здесь обычно 0 после нормализации
+                rem %= d;
+
+                // Разбиваем low на две части по 32 бита для безопасного деления
+                u64 parts[2] = {low >> 32, low & 0xFFFFFFFF};
+                u64 q_parts[2];
+
+                for (int i = 0; i < 2; ++i)
+                {
+                    u64 current = (rem << 32) | parts[i];
+                    q_parts[i] = current / d;
+                    rem = current % d;
+                }
+                if (r)
+                    *r = rem;
+                return (q_parts[0] << 32) | q_parts[1];
+#endif
+            };
+
             if (divisor.mHigh == 0)
             {
                 u64 r0, r1;
-                u64 q1 = _udiv128(0, dividend.mHigh, divisor.mLow, &r0);
-                u64 q0 = _udiv128(r0, dividend.mLow, divisor.mLow, &r1);
+                u64 q1 = udiv128_64(0, dividend.mHigh, divisor.mLow, &r0);
+                u64 q0 = udiv128_64(r0, dividend.mLow, divisor.mLow, &r1);
+
                 if constexpr (make_remainder)
                     if (rem_out)
                         *rem_out = {r1, 0};
-                return {q0, q1};
+
+                if constexpr (make_quotient)
+                    return {q0, q1};
+                return {0, 0};
             }
+
+            // Сложный случай: делитель > 64 бит
             u32 s = std::countl_zero(divisor.mHigh);
-            U128 v = divisor << s, u = dividend;
+            U128 v = divisor << s;
+            U128 u = dividend;
+
             u64 r_tmp;
-            u64 q_h = _udiv128(u.mHigh >> (64 - s), (u.mHigh << s) | (u.mLow >> (64 - s)), v.mHigh, &r_tmp);
-            U128 q_res{q_h, 0}, prod = q_res * divisor;
+            // Нормализованное деление
+            u64 q_h = udiv128_64(u.mHigh >> (64 - s), (u.mHigh << s) | (u.mLow >> (64 - s)), v.mHigh, &r_tmp);
+
+            U128 q_res{q_h, 0};
+            U128 prod = q_res * divisor;
+
+            // Коррекция частного (обычно 0-2 итерации)
             while (prod > dividend)
             {
                 prod -= divisor;
                 q_res.mLow--;
             }
+
             if constexpr (make_remainder)
                 if (rem_out)
                     *rem_out = dividend - prod;
-            return q_res;
+
+            if constexpr (make_quotient)
+                return q_res;
+            return {0, 0};
 #endif
         }
-        /**
-         * @brief Преобразование в десятичную строку через быстрые цепочки деления.
-         */
+
         [[nodiscard]] std::string toString() const
         {
             if (mHigh == 0 && mLow == 0)
                 return "0";
 
             U128 copy = *this;
-            std::string res;
-            res.reserve(40);
+            char buffer[44]; // С запасом
+            char *ptr = buffer + 43;
+            *ptr = '\0';
 
-            // 10^19 — максимальная степень десятки, влезающая в u64.
-            // Это позволит нам за один проход получать по 19 цифр.
-            constexpr uint64_t div_val = 10000000000000000000ULL;
+            constexpr uint64_t div_val = 10000000000000000000ULL; // 10^19
 
-            while (copy.high() > 0 || copy.low() > 0)
+            while (copy.mHigh > 0 || copy.mLow > 0)
             {
-                uint64_t rem;
+                uint64_t rem = 0;
 
+                // --- ВЕТКА 1: GCC / Clang (__int128) ---
 #if defined(__SIZEOF_INT128__)
-                unsigned __int128 val = (static_cast<unsigned __int128>(copy.high()) << 64) | copy.low();
+                unsigned __int128 val = (static_cast<unsigned __int128>(copy.mHigh) << 64) | copy.mLow;
                 rem = static_cast<uint64_t>(val % div_val);
                 val /= div_val;
-                copy.high() = static_cast<uint64_t>(val >> 64);
-                copy.low() = static_cast<uint64_t>(val);
+                copy.mHigh = static_cast<uint64_t>(val >> 64);
+                copy.mLow = static_cast<uint64_t>(val);
+
+                // --- ВЕТКА 2: MSVC (_udiv128) ---
+#elif defined(USE_MSVC_INTRINSICS_DIVISION)
+                copy.mHigh = _udiv128(0, copy.mHigh, div_val, &rem);
+                copy.mLow = _udiv128(rem, copy.mLow, div_val, &rem);
+
+                // --- ВЕТКА 3: Универсальная эмуляция (32-bit parts) ---
 #else
-                // Быстрая цепочка деления 128/64 для MSVC
-                copy.high() = _udiv128(0, copy.high(), div_val, &rem);
-                copy.low() = _udiv128(rem, copy.low(), div_val, &rem);
-                // Теперь rem содержит остаток от деления всего U128 на 10^19
+                // Делим high
+                rem = copy.mHigh % div_val;
+                copy.mHigh /= div_val;
+
+                // Делим low как (rem << 64 | copy.mLow) / div_val
+                // Используем школьное деление столбиком, разбивая low на две части по 32 бита
+                uint64_t parts[2] = {copy.mLow >> 32, copy.mLow & 0xFFFFFFFF};
+                uint64_t result_low = 0;
+
+                for (int i = 0; i < 2; ++i)
+                {
+                    uint64_t current = (rem << 32) | parts[i];
+                    uint64_t q = current / div_val;
+                    rem = current % div_val;
+                    result_low = (result_low << 32) | q;
+                }
+                copy.mLow = result_low;
 #endif
 
-                std::string part = std::to_string(rem);
+                // Преобразование остатка (19 цифр) в символы
+                uint64_t temp_rem = rem;
 
-                // Если это не последний блок, дополняем нулями до 19 символов
-                if (copy.high() > 0 || copy.low() > 0)
+                if (copy.mHigh > 0 || copy.mLow > 0)
                 {
-                    res = std::string(19 - part.length(), '0') + part + res;
+                    // Промежуточный блок: ОБЯЗАТЕЛЬНО 19 цифр (с ведущими нулями)
+                    for (int i = 0; i < 19; ++i)
+                    {
+                        *(--ptr) = '0' + (temp_rem % 10);
+                        temp_rem /= 10;
+                    }
                 }
                 else
                 {
-                    res = part + res;
+                    // Последний (самый старший) блок: пишем до последнего значащего разряда
+                    do
+                    {
+                        *(--ptr) = '0' + (temp_rem % 10);
+                        temp_rem /= 10;
+                    } while (temp_rem > 0);
                 }
             }
 
-            return res;
+            return std::string(ptr);
         }
 
     private:
@@ -500,32 +532,34 @@ namespace bignum::u128
 #endif
     };
 
-static inline U128 mult_ext_manual(u64 x, u64 y) noexcept {
-    const u64 x_low  = x & 0xFFFFFFFF;
-    const u64 x_high = x >> 32;
-    const u64 y_low  = y & 0xFFFFFFFF;
-    const u64 y_high = y >> 32;
-    const u64 t1  = x_low * y_low;
-    const u64 t21 = x_low * y_high;
-    const u64 t22 = x_high * y_low;
-    const u64 t3  = x_high * y_high;
-    const u64 mid = (t1 >> 32) + (t21 & 0xFFFFFFFF) + (t22 & 0xFFFFFFFF);
-    return { (t1 & 0xFFFFFFFF) | (mid << 32),
-             t3 + (t21 >> 32) + (t22 >> 32) + (mid >> 32) };
-}
+    static inline U128 mult_ext_manual(u64 x, u64 y) noexcept
+    {
+        const u64 x_low = x & 0xFFFFFFFF;
+        const u64 x_high = x >> 32;
+        const u64 y_low = y & 0xFFFFFFFF;
+        const u64 y_high = y >> 32;
+        const u64 t1 = x_low * y_low;
+        const u64 t21 = x_low * y_high;
+        const u64 t22 = x_high * y_low;
+        const u64 t3 = x_high * y_high;
+        const u64 mid = (t1 >> 32) + (t21 & 0xFFFFFFFF) + (t22 & 0xFFFFFFFF);
+        return {(t1 & 0xFFFFFFFF) | (mid << 32),
+                t3 + (t21 >> 32) + (t22 >> 32) + (mid >> 32)};
+    }
 
-static inline U128 square_ext_manual(u64 x) noexcept {
-    const u64 x_low  = x & 0xFFFFFFFF;
-    const u64 x_high = x >> 32;
-    const u64 t1 = x_low * x_low;
-    const u64 t2 = x_low * x_high;
-    const u64 t3 = x_high * x_high;
-    const u64 t2_x2 = t2 << 1;
-    const u64 t2_carry = t2 >> 63; 
-    const u64 mid = (t1 >> 32) + (t2_x2 & 0xFFFFFFFF);
-    return { (t1 & 0xFFFFFFFF) | (mid << 32),
-             t3 + (mid >> 32) + (t2_x2 >> 32) + (t2_carry << 32) };
-}
+    static inline U128 square_ext_manual(u64 x) noexcept
+    {
+        const u64 x_low = x & 0xFFFFFFFF;
+        const u64 x_high = x >> 32;
+        const u64 t1 = x_low * x_low;
+        const u64 t2 = x_low * x_high;
+        const u64 t3 = x_high * x_high;
+        const u64 t2_x2 = t2 << 1;
+        const u64 t2_carry = t2 >> 63;
+        const u64 mid = (t1 >> 32) + (t2_x2 & 0xFFFFFFFF);
+        return {(t1 & 0xFFFFFFFF) | (mid << 32),
+                t3 + (mid >> 32) + (t2_x2 >> 32) + (t2_carry << 32)};
+    }
 
 }
 
