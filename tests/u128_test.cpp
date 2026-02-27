@@ -1,6 +1,7 @@
 #include <cassert>
 #include <random>
 #include <iostream>
+#include <string>
 #include "../defines.h"
 #include "../u128.hpp"
 #include "../u128_utils.hpp"
@@ -151,6 +152,85 @@ namespace tests_u128
 
         printf("--- Тестирование завершено ---\n");
     }
+
+void stressTestU128() 
+{
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    // Стандартное определение диапазона [0, 2^64 - 1]
+    std::uniform_int_distribution<uint64_t> dist(0, std::numeric_limits<uint64_t>::max());
+
+    const int iterations = 1000000;
+    printf("--- Запуск стресс-теста U128 (%d итераций) ---\n", iterations);
+
+    for (int i = 0; i < iterations; ++i) {
+        // Генерируем два случайных 128-битных числа
+        U128 a { dist(gen), dist(gen) };
+        U128 b { dist(gen), dist(gen) };
+
+        // Исключаем деление на ноль
+        if (b.low() == 0 && b.high() == 0) b.low() = 1;
+
+        // --- 1. ВЫЧИСЛЕНИЕ ТРЕМЯ СПОСОБАМИ ---
+        
+        // Способ А: Нативный (через __int128 как эталон)
+#if defined(__SIZEOF_INT128__)
+        unsigned __int128 a128 = a.to_u128();
+        unsigned __int128 b128 = b.to_u128();
+        U128 q_ref = { static_cast<uint64_t>(a128 / b128), static_cast<uint64_t>((a128 / b128) >> 64) };
+        U128 r_ref = { static_cast<uint64_t>(a128 % b128), static_cast<uint64_t>((a128 % b128) >> 64) };
+#endif
+
+        // Способ Б: Автоматический (выберет __int128 или manual сам)
+        U128 r_auto;
+        U128 q_auto = U128::divide<true, true>(a, b, &r_auto);
+
+        // Способ В: Принудительный ручной (divide_manual)
+        U128 r_manual;
+        U128 q_manual = U128::divide_manual<true, true>(a, b, &r_manual);
+
+        // --- 2. СРАВНЕНИЕ РЕЗУЛЬТАТОВ ---
+
+        // Проверяем ручной алгоритм против автоматического (или нативного)
+        bool q_match = (q_manual.low() == q_auto.low() && q_manual.high() == q_auto.high());
+        bool r_match = (r_manual.low() == r_auto.low() && r_manual.high() == r_auto.high());
+
+#if defined(__SIZEOF_INT128__)
+        // Дополнительная сверка с нативным типом
+        q_match &= (q_manual.low() == q_ref.low() && q_manual.high() == q_ref.high());
+        r_match &= (r_manual.low() == r_ref.low() && r_manual.high() == r_ref.high());
+#endif
+
+        if (!q_match || !r_match) {
+            printf("\n[ОШИБКА ДЕЛЕНИЯ] Итерация %d\n", i);
+            printf("Dividend: %s\n", a.toString().c_str());
+            printf("Divisor:  %s\n", b.toString().c_str());
+            printf("Manual Q: %s, R: %s\n", q_manual.toString().c_str(), r_manual.toString().c_str());
+            printf("Auto   Q: %s, R: %s\n", q_auto.toString().c_str(), r_auto.toString().c_str());
+#if defined(__SIZEOF_INT128__)
+            printf("Ref    Q: %s, R: %s\n", q_ref.toString().c_str(), r_ref.toString().c_str());
+#endif
+            return;
+        }
+
+        // --- 3. ТЕСТ УМНОЖЕНИЯ (проверка mult_ext_manual) ---
+        U128 mul = a * b;
+#if defined(__SIZEOF_INT128__)
+        unsigned __int128 mul128 = a128 * b128;
+        if (mul.low() != (uint64_t)mul128 || mul.high() != (uint64_t)(mul128 >> 64)) {
+            printf("\n[ОШИБКА УМНОЖЕНИЯ] Итерация %d\n", i);
+            return;
+        }
+#endif
+
+        if (i > 0 && i % 200000 == 0) {
+            printf("...пройдено %d итераций\n", i);
+        }
+    }
+
+    printf("[УСПЕХ] Все 128-битные алгоритмы работают идентично!\n");
+}
+
 
     void cmp_operator_test()
     {

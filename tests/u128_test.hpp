@@ -13,6 +13,8 @@ namespace tests_u128
 
     void testU128ToString();
 
+    void stressTestU128();
+
     void cmp_operator_test();
 
     void shift_right_operator_test();

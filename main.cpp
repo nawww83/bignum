@@ -22,6 +22,8 @@ int main()
 
         testU128ToString();
 
+        stressTestU128();
+
         cmp_operator_test();
 
         shift_right_operator_test();
