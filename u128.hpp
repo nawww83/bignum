@@ -36,7 +36,7 @@
 namespace bignum::u128
 {
     using u64 = uint64_t;
-     using u32 = uint32_t;
+    using u32 = uint32_t;
     class U128
     {
         u64 mLow{0};
@@ -357,94 +357,113 @@ namespace bignum::u128
         }
 
         // --- Вспомогательный метод (Ручное деление) ---
-template <bool make_quotient, bool make_remainder>
-static U128 divide_manual(const U128 &dividend, const U128 &divisor, U128 *rem_out)
-{
-    auto udiv128_64 = [](u64 high, u64 low, u64 d, u64 *r) -> u64 {
-        #if defined(USE_MSVC_INTRINSICS_DIVISION)
-            return _udiv128(high, low, d, r);
-        #else
-            // Ваша эмуляция через 32-битные части (из Пути 2)
-            u64 rem = high % d;
-            u64 p_hi = low >> 32;
-            u64 p_lo = low & 0xFFFFFFFF;
-            u64 q_hi = ((rem << 32) | p_hi) / d;
-            rem = ((rem << 32) | p_hi) % d;
-            u64 q_lo = ((rem << 32) | p_lo) / d;
-            if (r) *r = ((rem << 32) | p_lo) % d;
-            return (q_hi << 32) | q_lo;
-        #endif
-    };
-
-    if (divisor.mHigh == 0) {
-        u64 r0, r1;
-        u64 q1 = udiv128_64(0, dividend.mHigh, divisor.mLow, &r0);
-        u64 q0 = udiv128_64(r0, dividend.mLow, divisor.mLow, &r1);
-        if constexpr (make_remainder) if (rem_out) *rem_out = {r1, 0};
-        if constexpr (make_quotient) return {q0, q1};
-        return {0, 0};
-    }
-
-    u32 s = std::countl_zero(divisor.mHigh);
-    U128 v = divisor << s;
-    U128 u = dividend;
-
-    // Исправляем UB при s = 0
-    u64 h_in = (s == 0) ? 0 : (u.mHigh >> (64 - s));
-    u64 l_in = (u.mHigh << s);
-    if (s > 0) l_in |= (u.mLow >> (64 - s));
-
-    u64 r_tmp;
-    u64 q_h = udiv128_64(h_in, l_in, v.mHigh, &r_tmp);
-
-    U128 q_res{q_h, 0};
-    U128 prod = q_res * divisor;
-
-    while (prod > dividend) {
-        prod -= divisor;
-        q_res.mLow--;
-    }
-
-    // 2. Если недобрали (q слишком мала) — увеличиваем
-    // Важно: остаток (dividend - prod) должен быть меньше делителя
-    for (;;) {
-        U128 current_rem = dividend - prod;
-        if (current_rem >= divisor) {
-            prod += divisor;
-            q_res.mLow++;
-        } else {
-            if constexpr (make_remainder) if (rem_out) *rem_out = current_rem;
-            break;
-        }
-    }
-
-    if constexpr (make_remainder) if (rem_out) *rem_out = dividend - prod;
-    if constexpr (make_quotient) return q_res;
-    return {0, 0};
-}
-
-// --- Основной метод (Диспетчер) ---
-template <bool make_quotient, bool make_remainder>
-static U128 divide(const U128 &dividend, const U128 &divisor, U128 *rem_out)
-{
-#if defined(__SIZEOF_INT128__)
-    // ПУТЬ 1: Нативное деление
-    unsigned __int128 a = dividend.to_u128(), b = divisor.to_u128();
-    if constexpr (make_remainder) if (rem_out) {
-        unsigned __int128 r = a % b;
-        *rem_out = {static_cast<u64>(r), static_cast<u64>(r >> 64)};
-    }
-    if constexpr (make_quotient) {
-        unsigned __int128 q = a / b;
-        return {static_cast<u64>(q), static_cast<u64>(q >> 64)};
-    }
-    return {0, 0};
+        template <bool make_quotient, bool make_remainder>
+        static U128 divide_manual(const U128 &dividend, const U128 &divisor, U128 *rem_out)
+        {
+            auto udiv128_64 = [](u64 high, u64 low, u64 d, u64 *r) -> u64
+            {
+#if defined(USE_MSVC_INTRINSICS_DIVISION)
+                return _udiv128(high, low, d, r);
 #else
-    // ПУТЬ 2: Вызов ручного метода
-    return divide_manual<make_quotient, make_remainder>(dividend, divisor, rem_out);
+                // Ваша эмуляция через 32-битные части (из Пути 2)
+                u64 rem = high % d;
+                u64 p_hi = low >> 32;
+                u64 p_lo = low & 0xFFFFFFFF;
+                u64 q_hi = ((rem << 32) | p_hi) / d;
+                rem = ((rem << 32) | p_hi) % d;
+                u64 q_lo = ((rem << 32) | p_lo) / d;
+                if (r)
+                    *r = ((rem << 32) | p_lo) % d;
+                return (q_hi << 32) | q_lo;
 #endif
-}
+            };
 
+            if (divisor.mHigh == 0)
+            {
+                u64 r0, r1;
+                u64 q1 = udiv128_64(0, dividend.mHigh, divisor.mLow, &r0);
+                u64 q0 = udiv128_64(r0, dividend.mLow, divisor.mLow, &r1);
+                if constexpr (make_remainder)
+                    if (rem_out)
+                        *rem_out = {r1, 0};
+                if constexpr (make_quotient)
+                    return {q0, q1};
+                return {0, 0};
+            }
+
+            u32 s = std::countl_zero(divisor.mHigh);
+            U128 v = divisor << s;
+            U128 u = dividend;
+
+            // Исправляем UB при s = 0
+            u64 h_in = (s == 0) ? 0 : (u.mHigh >> (64 - s));
+            u64 l_in = (u.mHigh << s);
+            if (s > 0)
+                l_in |= (u.mLow >> (64 - s));
+
+            u64 r_tmp;
+            u64 q_h = udiv128_64(h_in, l_in, v.mHigh, &r_tmp);
+
+            U128 q_res{q_h, 0};
+            U128 prod = q_res * divisor;
+
+            while (prod > dividend)
+            {
+                prod -= divisor;
+                q_res.mLow--;
+            }
+
+            // 2. Если недобрали (q слишком мала) — увеличиваем
+            // Важно: остаток (dividend - prod) должен быть меньше делителя
+            for (;;)
+            {
+                U128 current_rem = dividend - prod;
+                if (current_rem >= divisor)
+                {
+                    prod += divisor;
+                    q_res.mLow++;
+                }
+                else
+                {
+                    if constexpr (make_remainder)
+                        if (rem_out)
+                            *rem_out = current_rem;
+                    break;
+                }
+            }
+
+            if constexpr (make_remainder)
+                if (rem_out)
+                    *rem_out = dividend - prod;
+            if constexpr (make_quotient)
+                return q_res;
+            return {0, 0};
+        }
+
+        // --- Основной метод (Диспетчер) ---
+        template <bool make_quotient, bool make_remainder>
+        static U128 divide(const U128 &dividend, const U128 &divisor, U128 *rem_out)
+        {
+#if defined(__SIZEOF_INT128__)
+            // ПУТЬ 1: Нативное деление
+            unsigned __int128 a = dividend.to_u128(), b = divisor.to_u128();
+            if constexpr (make_remainder)
+                if (rem_out)
+                {
+                    unsigned __int128 r = a % b;
+                    *rem_out = {static_cast<u64>(r), static_cast<u64>(r >> 64)};
+                }
+            if constexpr (make_quotient)
+            {
+                unsigned __int128 q = a / b;
+                return {static_cast<u64>(q), static_cast<u64>(q >> 64)};
+            }
+            return {0, 0};
+#else
+            // ПУТЬ 2: Вызов ручного метода
+            return divide_manual<make_quotient, make_remainder>(dividend, divisor, rem_out);
+#endif
+        }
 
         [[nodiscard]] std::string toString() const
         {
@@ -579,9 +598,9 @@ static U128 divide(const U128 &dividend, const U128 &divisor, U128 *rem_out)
             return result;
         }
 
-    #if defined(__SIZEOF_INT128__)
+#if defined(__SIZEOF_INT128__)
         constexpr unsigned __int128 to_u128() const noexcept { return (static_cast<unsigned __int128>(mHigh) << 64) | mLow; }
-    #endif
+#endif
 
     }; // class U128
 
