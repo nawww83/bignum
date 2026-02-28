@@ -26,14 +26,27 @@ namespace bignum
         ULOW mHigh{0};
 
     public:
-        static constexpr uint32_t HALF_WIDTH = sizeof(ULOW) * 8;
+        // Используем универсальный способ определения разрядности
+        static constexpr uint32_t HALF_WIDTH = static_cast<uint32_t>(bignum::generic::bit_size<ULOW>());
         static constexpr uint32_t WIDTH = HALF_WIDTH * 2;
 
+        // Тип "половинки" для использования в generic-функциях
+        using value_type = ULOW;
+
+        // --- Конструкторы ---
         // --- Конструкторы ---
         constexpr UBig() noexcept = default;
-        constexpr UBig(ULOW low, ULOW high) noexcept : mLow(std::move(low)), mHigh(std::move(high)) {}
-        constexpr UBig(ULOW low) noexcept : mLow(std::move(low)), mHigh(0) {}
-        constexpr UBig(uint64_t val) noexcept : mLow(static_cast<ULOW>(val)), mHigh(0) {}
+        
+        // Используем std::move, так как ULOW может быть тяжелым (например, U1024)
+        constexpr UBig(ULOW low, ULOW high) noexcept 
+            : mLow(std::move(low)), mHigh(std::move(high)) {}
+            
+        constexpr UBig(ULOW low) noexcept 
+            : mLow(std::move(low)), mHigh(0) {}
+
+        // Универсальный конструктор от примитива
+        constexpr UBig(uint64_t val) noexcept 
+            : mLow(static_cast<ULOW>(val)), mHigh(0) {}
 
         // --- Доступ ---
         [[nodiscard]] constexpr const ULOW &low() const noexcept { return mLow; }
@@ -166,7 +179,6 @@ namespace bignum
             result.mHigh += t3;
             return result;
         }
-        
 
         /**
          * @brief Возведение N/2-битного числа в квадрат с расширением до N-битного числа.

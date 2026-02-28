@@ -476,119 +476,127 @@ namespace bignum::u128
 
 } // namespace bignum::u128
 
+namespace std {
+    template<>
+    struct hash<bignum::u128::U128> {
+        size_t operator()(const bignum::u128::U128& v) const noexcept {
+            // Комбинируем хеши двух 64-битных половин (алгоритм из Boost)
+            size_t h1 = std::hash<uint64_t>{}(v.low());
+            size_t h2 = std::hash<uint64_t>{}(v.high());
+            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        }
+    };
+
+    template<>
+    class numeric_limits<bignum::u128::U128> {
+    public:
+        static constexpr bool is_specialized = true;
+        static constexpr bool is_signed = false;
+        static constexpr bool is_integer = true;
+        static constexpr bool is_exact = true;
+        static constexpr bool has_infinity = false;
+        
+        static constexpr bignum::u128::U128 min() noexcept { return {0, 0}; }
+        static constexpr bignum::u128::U128 max() noexcept { return bignum::u128::U128::max(); }
+        static constexpr bignum::u128::U128 lowest() noexcept { return min(); }
+        
+        static constexpr int digits = 128;
+        static constexpr int digits10 = 38; // 10^38 < 2^128
+    };
+}
+
 namespace bignum::generic
 {
-    template <typename U>
-    inline constexpr int countl_zero_generic(const U &val)
-    {
-        if constexpr (requires { val.countl_zero(); })
-        {
-            // Если у типа есть метод (ваш U128/UBig)
+    template<typename T>
+    concept IsBigInt = std::is_integral_v<T> || requires(T a) {
+        { a.low() };
+        { a.high() };
+    };
+
+    template<typename T>
+    inline constexpr size_t bit_size() {
+        if constexpr (std::is_integral_v<T>) return sizeof(T) * 8;
+        if constexpr (requires(T a) { a.low(); }) {
+            using LowT = std::decay_t<decltype(std::declval<T>().low())>;
+            return bit_size<LowT>() * 2;
+        }
+        return 0; 
+    }
+
+    template <typename T>
+    inline constexpr int countl_zero_generic(const T &val) {
+        if constexpr (std::is_integral_v<T>) {
+            return std::countl_zero(val);
+        } 
+        // Добавляем проверку на наличие метода .countl_zero() (для U128)
+        else if constexpr (requires { val.countl_zero(); }) {
             return val.countl_zero();
         }
-        else
-        {
-            // Если это примитив (uint64_t, uint32_t)
-            return std::countl_zero(val);
+        // Рекурсивный обход иерархии (для UBig)
+        else if constexpr (requires { val.high(); val.low(); }) {
+            using HighT = std::decay_t<decltype(val.high())>;
+            int high_bits = (int)bit_size<HighT>();
+            int hz = countl_zero_generic(val.high());
+            if (hz < high_bits) return hz;
+            return high_bits + countl_zero_generic(val.low());
         }
+        return 0; // Заглушка для constexpr
     }
 
-    /**
-     * @brief Универсальное получение остатка от деления.
-     */
     template <typename T>
-    inline constexpr T get_rem(const T &a, const T &b)
-    {
-        // 1. Если это наш U128, у которого есть эффективный оператор %
-        if constexpr (std::is_same_v<std::decay_t<T>, bignum::u128::U128>)
-        {
-            return a % b;
+    inline constexpr std::pair<T, T> div_rem(const T& a, const T& b) {
+        // Случай А: Возвращает пару (UBig)
+        if constexpr (requires { { a / b } -> std::same_as<std::pair<T, T>>; }) {
+            return a / b;
+        } 
+        // Случай Б: Статический метод (U128)
+        // Используем явную проверку существования статического метода
+        else if constexpr (requires { T::template divide<true, true>(a, b, (T*)nullptr); }) {
+            T r;
+            T q = T::template divide<true, true>(a, b, &r);
+            return {q, r};
         }
-        // 2. Если это UBig, который возвращает пару {Q, R}
-        else if constexpr (requires { (a / b).second; })
-        {
-            return (a / b).second;
-        }
-        // 3. Если это примитив (uint64_t)
-        else
-        {
-            return a % b;
+        // Случай В: Примитивы (u64)
+        else {
+            return { a / b, a % b };
         }
     }
 
-    /**
-     * @brief Вычисляет 2^W / x.
-     */
-    template <class U>
-    inline std::pair<U, U> reciprocal_and_extend(U x)
-    {
-        // Нам нужно, чтобы U поддерживал countl_zero, <<=, - (унарный), / и %
-        if (x == U{0})
-            return {U{0}, U{0}}; // Или assert
-
+    template <typename T>
+    inline constexpr T get_rem_generic(const T &a, const T &b) {
+        if constexpr (std::is_integral_v<T>) return a % b;
+        else if constexpr (requires { a % b; }) return a % b;
+        else return div_rem(a, b).second;
+    }
+    
+    template <IsBigInt U>
+    inline std::pair<U, U> reciprocal_and_extend(U x) {
+        if (x == U{0}) return {U{0}, U{0}};
         const auto x_old = x;
-        // Использование универсальной функции
         const int i = countl_zero_generic(x);
         x <<= i;
-        x = -x; // Теперь x = 2^W - (x_old << i)
+        x = -x; 
 
         U Q, R;
-        if (i > 0)
-        {
-            // ОПТИМИЗАЦИЯ: используем наш divide, чтобы не делить дважды
-            // std::decay_t<U> сделает из "const U128&" просто "U128"
-            if constexpr (std::is_same_v<std::decay_t<U>, bignum::u128::U128>)
-            {
-                // Здесь мы явно вызываем статический метод
-                Q = bignum::u128::U128::divide<true, true>(x, x_old, &R);
-            }
-            else if constexpr (requires { (x / x_old).first; })
-            {
-                // Дополнительная ветка для UBig (если он возвращает pair)
-                auto res = x / x_old;
-                Q = res.first;
-                R = res.second;
-            }
-            else
-            {
-                // Ветка для uint64_t и других примитивов
-                Q = x / x_old;
-                R = x % x_old;
-            }
-        }
-        else
-        {
-            // Если i == 0, число x_old очень большое (старший бит 1)
-            // x = -x_old эквивалентно (2^W - x_old)
+        if (i > 0) {
+            auto [q_res, r_res] = div_rem(x, x_old);
+            Q = q_res; R = r_res;
+        } else {
             bool less = (x < x_old);
             Q = less ? U{0} : U{1};
-            R = less ? x : U{0}; // Если x >= x_old при i=0, то x_old точно > 2^(W-1)
+            R = less ? x : U{0};
         }
-
         Q += (U{1} << i);
         return {Q, R};
     }
 
-    /**
-     * @brief r = (r + delta) mod m
-     */
-    template <class U>
-    inline U smart_remainder_adder(U &r, const U &delta, const U &m, const U &r_rec)
-    {
-        // Используем хелпер для безопасного получения остатка
-        const U delta_m = get_rem(delta, m);
+    template <IsBigInt U>
+    inline U smart_remainder_adder(U &r, const U &delta, const U &m, const U &r_rec) {
+        const U delta_m = get_rem_generic(delta, m);
         const U summ = r + delta_m;
-
         const bool overflow = (summ < r);
-
-        // Корректируем сумму
         U next_r = summ + (overflow ? r_rec : U{0});
-
-        // Снова используем хелпер вместо r %= m
-        r = get_rem(next_r, m);
-
-        if (overflow)
-            return U{1};
-        return (summ >= m) ? U{1} : U{0};
+        r = get_rem_generic(next_r, m);
+        return overflow ? U{1} : ((summ >= m) ? U{1} : U{0});
     }
-}
+} // namespace bignum::generic
