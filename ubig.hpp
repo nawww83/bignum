@@ -344,8 +344,7 @@ namespace bignum
             }
 
             // 1. Начальная оценка частного и остатка по старшим половинам
-            const ULOW Q = mHigh / other.mHigh;
-            const ULOW R = mHigh % other.mHigh;
+            auto [Q, R] = divide_as_pair(mHigh, other.mHigh);
 
             // 2. Учет вклада младших половин (Delta-коррекция)
             constexpr ULOW MAX_V = ULOW::max();
@@ -360,9 +359,9 @@ namespace bignum
 
             // 3. Вычисление поправочного коэффициента Quotient
             const ULOW C1 = (other.mHigh < MAX_V) ? (other.mHigh + 1ull) : MAX_V;
-            const ULOW W2 = MAX_V - (Delta / C1);
+            const ULOW W2 = MAX_V - get_quotient(Delta, C1);
 
-            UBig Quotient = ((W1 / W2).first / C1).first;
+            UBig Quotient = get_quotient(get_quotient(W1, W2), C1);
             if (is_neg)
                 Quotient = -Quotient;
 
@@ -595,9 +594,25 @@ namespace bignum
         /**
          * @brief Вспомогательный метод для получения только частного.
          */
+        static constexpr UBig get_quotient(const UBig &a, const ULOW &b)
+        {
+            return (a / b).first;
+        }
+
+        /**
+         * @brief Вспомогательный метод для получения только частного.
+         */
         static constexpr ULOW get_quotient(const ULOW &a, const ULOW &b)
         {
             return bignum::generic::div_rem(a, b).first;
+        }
+
+        /**
+         * @brief Вспомогательный метод для получения частного и остатка в виде пары.
+         */
+        static constexpr auto divide_as_pair(const ULOW &a, const ULOW &b)
+        {
+            return bignum::generic::div_rem(a, b);
         }
 
         /**
