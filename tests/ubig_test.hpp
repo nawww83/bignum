@@ -8,4 +8,8 @@
 namespace tests_ubig
 {
     void debug_test();
+
+    void test_u256_division();
+
+    void stress_test_u256(int iterations = 100000);
 }

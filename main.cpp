@@ -93,6 +93,11 @@ int main()
         using namespace tests_ubig;
 
         debug_test();
+
+        test_u256_division();
+
+        stress_test_u256();
+
     }
 
     if (RUN_LONG_TESTS)
