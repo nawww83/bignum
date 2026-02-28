@@ -31,17 +31,25 @@ namespace
 
 namespace tests_u128
 {
-    void debug_test()
+    void print_u128()
     {
-        ;
+        U128 x = "18446744073709551617"_u128;
+        U128 y {1ull, 1ull};
+        assert(x == y);
+        std::cout << "I am an 128-bit number 2**128 + 1: " << x << '\n';
     }
 
     void string_value_test()
     {
         {
-            U128 x{1ull, 1ull};
+            U128 x = "18446744073709551617"_u128;
             const auto &x_str = x.toString();
             assert(x_str == "18446744073709551617");
+        }
+        {
+            auto x = "100000000000000000000000000000000000001"_u128;
+            const auto& x_str = x.toString();
+            assert(x_str == "100000000000000000000000000000000000001");
         }
         {
             U128 x{1ull, 0ull};
@@ -407,7 +415,7 @@ void stressTestU128()
             u64 exp_h = static_cast<u64>(reference >> 64);
             u64 exp_l = static_cast<u64>(reference);
 
-            U128 result = (x == y) ? square_ext_manual(x) : mult_ext_manual(x, y);
+            U128 result = (x == y) ? U128::square_ext_manual(x) : U128::mult_ext_manual(x, y);
 
             if (result.high() == exp_h && result.low() == exp_l)
             {

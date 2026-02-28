@@ -7,7 +7,7 @@
 
 namespace tests_u128
 {
-    void debug_test();
+    void print_u128();
 
     void string_value_test();
 

@@ -14,9 +14,9 @@ int main()
     {
         using namespace tests_u128;
 
-        std::cout << "Run quick U128 tests...";
+        std::cout << "Run quick U128 tests...\n";
 
-        debug_test();
+        print_u128();
 
         string_value_test();
 
