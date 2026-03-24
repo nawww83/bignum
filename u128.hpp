@@ -513,6 +513,9 @@ namespace bignum::generic
         { a.high() };
     };
 
+    /**
+     * @brief Размер типа Big Integers в битах.
+     */
     template<typename T>
     inline constexpr size_t bit_size() {
         if constexpr (std::is_integral_v<T>) return sizeof(T) * 8;
@@ -523,6 +526,9 @@ namespace bignum::generic
         return 0; 
     }
 
+    /**
+     * @brief Количество ведущих нулей у числа Big Integers.
+     */
     template <typename T>
     inline constexpr int countl_zero_generic(const T &val) {
         if constexpr (std::is_integral_v<T>) {
@@ -540,9 +546,12 @@ namespace bignum::generic
             if (hz < high_bits) return hz;
             return high_bits + countl_zero_generic(val.low());
         }
-        return 0; // Заглушка для constexpr
+        return 0;
     }
 
+    /**
+     * @brief Обобщенное деление с остатком для Big Integers.
+     */
     template <typename T>
     inline constexpr std::pair<T, T> div_rem(const T& a, const T& b) {
         // Случай А: Возвращает пару (UBig)
@@ -562,6 +571,9 @@ namespace bignum::generic
         }
     }
 
+    /**
+     * @brief Обобщенная функция вычисления остатка от деления двух Big Integers.
+     */
     template <typename T>
     inline constexpr T get_rem_generic(const T &a, const T &b) {
         if constexpr (std::is_integral_v<T>) return a % b;
@@ -569,6 +581,9 @@ namespace bignum::generic
         else return div_rem(a, b).second;
     }
     
+    /**
+     * @brief Вычисляет [Q, R] = 2^w / x, где 2^w - это есть ноль для целого беззнакового типа U (U128, UBig).
+     */
     template <IsBigInt U>
     inline std::pair<U, U> reciprocal_and_extend(U x) {
         if (x == U{0}) return {U{0}, U{0}};
@@ -590,6 +605,13 @@ namespace bignum::generic
         return {Q, R};
     }
 
+    /**
+     * @brief Добавляет к остатку дельту по заданному модулю: r = (r + delta) mod m.
+     * @param r Остаток.
+     * @param delta Дельта.
+     * @param m Модуль.
+     * @param r_rec Заранее вычисленная величина 2^w / m (для учета переполнения суммы).
+     */
     template <IsBigInt U>
     inline U smart_remainder_adder(U &r, const U &delta, const U &m, const U &r_rec) {
         const U delta_m = get_rem_generic(delta, m);
@@ -597,6 +619,6 @@ namespace bignum::generic
         const bool overflow = (summ < r);
         U next_r = summ + (overflow ? r_rec : U{0});
         r = get_rem_generic(next_r, m);
-        return overflow ? U{1} : ((summ >= m) ? U{1} : U{0});
+        return overflow ? U{1} : (summ >= m ? U{1} : U{0});
     }
 } // namespace bignum::generic

@@ -600,11 +600,12 @@ void stressTestU128()
     {
         using namespace bignum::generic;
         {
+            // 2^64 / 1 = [2^64, 0] = [0, 0]
             auto x = u64{1};
             auto [q, r] = reciprocal_and_extend(x);
             assert((q == 0 && r == 0));
         }
-        {
+        { // 2^64 / 2 = [2^63, 0]
             auto x = u64{2};
             auto [q, r] = reciprocal_and_extend(x);
             assert((q == u64{1ull << 63} && r == 0));
@@ -614,12 +615,12 @@ void stressTestU128()
             auto [q, r] = reciprocal_and_extend(x);
             assert((q == 6148914691236517205ull && r == 1));
         }
-        {
+        { // 2^64 / (2^64 - 1) = [1, 1]
             auto x = u64{-1ull};
             auto [q, r] = reciprocal_and_extend(x);
             assert((q == 1 && r == 1));
         }
-        {
+        { // 2^64 / (2^64 - 2) = [1, 2]
             auto x = u64{-2ull};
             auto [q, r] = reciprocal_and_extend(x);
             assert((q == 1 && r == 2));
