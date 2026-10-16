@@ -23,5 +23,7 @@ namespace tests_i128
 
     void division_test();
 
+    void division_sign_test();
+
     void isqrt_test();
 }

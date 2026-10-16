@@ -462,13 +462,10 @@ namespace bignum::i128
                 return {result, 0};
             }
             const auto q = X.mUnsigned / Y;
+            // Знак результата хранится только в поле sign: модуль частного
+            // равен |X| / Y, коррекций по знакам не делаем.
             auto Q = I128{q, X.mSign};
             auto R = X - Q * Y;
-            if (R.is_negative())
-            {
-                R += I128{Y};
-                Q -= I128{1};
-            }
             return {Q, R.mUnsigned.low()};
         }
 
@@ -493,13 +490,10 @@ namespace bignum::i128
                 return {result, 0};
             }
             const auto q = X.mUnsigned / Y.mUnsigned;
+            // Знак результата хранится только в поле sign: модуль частного
+            // равен |X| / |Y|, коррекций по знакам не делаем.
             auto Q = I128{q, X.mSign ^ Y.mSign};
             auto R = X - Q * Y;
-            if (!R.is_zero() && (R.mSign ^ Y.mSign)())
-            {
-                R += I128{Y};
-                Q -= I128{1};
-            }
             return {Q, R};
         }
 

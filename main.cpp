@@ -86,6 +86,8 @@ int main()
 
         division_test();
 
+        division_sign_test();
+
         isqrt_test();
 
         std::cout << "Ok.\n";

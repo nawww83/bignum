@@ -410,8 +410,9 @@ namespace tests_i128
             I128 x{U128{555}, Sign{true}};
             u64 y{7};
             const auto &[q, r] = x / y;
-            assert(q == -I128{80ull});
-            assert(r == 5ull);
+            // Деление усекается к нулю: -555 = 7*(-79) + (-2), остаток берётся по модулю.
+            assert(q == -I128{79ull});
+            assert(r == 2ull);
         }
         {
             I128 x{U128{444}};
@@ -460,15 +461,16 @@ namespace tests_i128
             I128 x{U128{555}, Sign{true}};
             I128 y{U128{7}};
             const auto &[q, r] = x / y;
-            assert(q == -I128{80ull});
-            assert(r == I128{5ull});
+            // Усечение к нулю: модуль частного |−555|/7 = 79, знак в sign.
+            assert(q == -I128{79ull});
+            assert(r == -I128{2ull});
         }
         {
             I128 x{U128{555}};
             I128 y{U128{7}, Sign{true}};
             const auto &[q, r] = x / y;
-            assert(q == -I128{80ull});
-            assert(r == -I128{5ull});
+            assert(q == -I128{79ull});
+            assert(r == I128{2ull});
         }
         {
             I128 x{U128{555}, Sign{true}};
@@ -488,15 +490,16 @@ namespace tests_i128
             I128 x{U128{5}, Sign{true}};
             I128 y{U128{7}};
             const auto &[q, r] = x / y;
-            assert(q == -I128{1ull});
-            assert(r == I128{2ull});
+            // Усечение к нулю: -5 / 7 = 0 (со знаком), остаток -5.
+            assert(q == I128{0});
+            assert(r == -I128{5ull});
         }
         {
             I128 x{U128{5}};
             I128 y{U128{7}, Sign{true}};
             const auto &[q, r] = x / y;
-            assert(q == -I128{1ull});
-            assert(r == -I128{2ull});
+            assert(q == I128{0});
+            assert(r == I128{5ull});
         }
         {
             I128 x{U128{5}, Sign{true}};
@@ -544,6 +547,49 @@ namespace tests_i128
             I128 y{U128{1}}; y.set_nan();
             I128 z = (x / y).first;
             assert(z.is_nan());
+        }
+    }
+
+    void division_sign_test()
+    {
+        // Регрессия: знак частного хранится только в поле sign, модуль равен
+        // |X|/|Y| (деление усекается к нулю, без евклидовой коррекции Q -= 1).
+        // Из-за прежней коррекции, например, I128{-3} / 2 давало -2 вместо -1,
+        // что ломало вычисления Decimal (в частности, вычитание дробей).
+        {
+            const auto &[q, r] = I128{U128{3}, Sign{true}} / I128{U128{2}};   // -3 / 2
+            assert(q == -I128{1ull});
+            assert(r == -I128{1ull});
+        }
+        {
+            const auto &[q, r] = I128{U128{7}, Sign{true}} / I128{U128{2}};   // -7 / 2
+            assert(q == -I128{3ull});
+            assert(r == -I128{1ull});
+        }
+        {
+            const auto &[q, r] = I128{U128{7}} / I128{U128{2}, Sign{true}};   // 7 / -2
+            assert(q == -I128{3ull});
+            assert(r == I128{1ull});
+        }
+        {
+            const auto &[q, r] = I128{U128{7}, Sign{true}} / I128{U128{2}, Sign{true}}; // -7 / -2
+            assert(q == I128{3ull});
+            assert(r == -I128{1ull});
+        }
+        {
+            // Модуль частного не зависит от знаков операндов.
+            const I128 d{U128{7}};
+            const I128 q_pos = (I128{U128{100}} / d).first;
+            const I128 q_neg = (I128{U128{100}, Sign{true}} / d).first;
+            assert(q_pos == I128{14ull});
+            assert(q_neg == -I128{14ull});
+            assert(q_pos.unsigned_part() == q_neg.unsigned_part());
+        }
+        {
+            // Полуширинное деление: знак также только в sign, остаток — по модулю.
+            const auto &[q, r] = I128{U128{555}, Sign{true}} / u64{7}; // -555 / 7
+            assert(q == -I128{79ull});
+            assert(r == 2ull);
         }
     }
 
