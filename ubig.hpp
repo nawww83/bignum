@@ -9,6 +9,7 @@
 #include <bit>
 #include <compare>
 #include <algorithm>
+#include <limits>
 #include <utility>
 #include "u128.hpp" // generic
 
@@ -44,7 +45,12 @@ namespace bignum
         constexpr UBig(ULOW low) noexcept
             : mLow(std::move(low)), mHigh(0) {}
 
-        // Универсальный конструктор от примитива
+        // Универсальный конструктор от примитива.
+        // Отключается, если сам ULOW уже является целочисленным типом: иначе он
+        // совпадает с конструктором UBig(ULOW) и/или создаёт неоднозначность
+        // при выборе перегрузки для целочисленных литералов.
+        template <typename U = ULOW>
+            requires (!std::is_integral_v<U>)
         constexpr UBig(uint64_t val) noexcept
             : mLow(static_cast<ULOW>(val)), mHigh(0) {}
 
@@ -347,7 +353,7 @@ namespace bignum
             auto [Q, R] = divide_as_pair(mHigh, other.mHigh);
 
             // 2. Учет вклада младших половин (Delta-коррекция)
-            constexpr ULOW MAX_V = ULOW::max();
+            constexpr ULOW MAX_V = half_max();
             const ULOW Delta = MAX_V - other.mLow;
             const UBig DeltaQ = mult_ext(Delta, Q);
 
@@ -559,6 +565,17 @@ namespace bignum
         }
 
         /**
+         * @brief Возвращает максимально возможное значение "половинки" (ULOW).
+         */
+        [[nodiscard]] static constexpr ULOW half_max() noexcept
+        {
+            if constexpr (requires { ULOW::max(); })
+                return ULOW::max();
+            else
+                return std::numeric_limits<ULOW>::max();
+        }
+
+        /**
          * @brief Возвращает максимально возможное значение для данного типа UBig.
          * Рекурсивно заполняет все уровни вложенности единицами.
          */
@@ -642,7 +659,7 @@ namespace bignum
                 // Если ULOW - это u64, используем std::to_string.
                 // Если ULOW - это U128, вызываем r.toString().
                 std::string part;
-                if constexpr (std::is_same_v<ULOW, uint64_t>)
+                if constexpr (std::is_integral_v<ULOW>)
                 {
                     part = std::to_string(r);
                 }

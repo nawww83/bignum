@@ -105,7 +105,6 @@ inline U128 nroot(const U128& x, uint32_t m)
     if (x0 > x) x0 = x;
 
     U128 m_val{m};
-    U128 m_minus_1 = m_val - 1;
 
     for (;;) {
         U128 p = int_power_fast(x0, m - 1);
@@ -173,6 +172,8 @@ inline U128 modular_inverse(U128 a, U128 m, bool &success)
     success = false;
     if (m == 1)
         return 0;
+    if (a == 0)
+        return 0;
     while (a > 1)
     {
         if (m == 0)
@@ -213,6 +214,20 @@ inline std::pair<U128, U128> sqrt_mod(const U128& x, const U128& p)
 }
 
 /**
+ * @brief Наибольший общий делитель (алгоритм Евклида).
+ */
+inline U128 gcd(U128 a, U128 b)
+{
+    while (b != U128{0})
+    {
+        U128 t = a % b;
+        a = b;
+        b = t;
+    }
+    return a;
+}
+
+/**
  * @brief Деление числа x на y по модулю p. По определению без остатка.
  */
 inline U128 div_mod(const U128& x, const U128& y, const U128& p)
@@ -225,6 +240,11 @@ inline U128 div_mod(const U128& x, const U128& y, const U128& p)
         assert(rx == 0);
         return 0;
     }
+    // Уравнение q * ry = rx + k * p разрешимо относительно q тогда и только
+    // тогда, когда gcd(ry, p) делит rx. Иначе решения нет, и прежняя
+    // реализация зацикливалась навсегда.
+    if ((rx % gcd(ry, p)) != 0)
+        return 0;
     while ((rx % ry) != 0)
         rx += p;
     return rx / ry; 

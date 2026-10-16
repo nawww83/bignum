@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace tests_u128
 {
     void print_u128();

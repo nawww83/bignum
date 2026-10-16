@@ -3,13 +3,12 @@
  * @brief Класс для арифметики 128-битных знаковых целых чисел с переполнением.
  */
 
+#pragma once
+
 #include <cstdint>      // uint64_t, uint32_t, uint16_t, uint8_t
 #include "u128.hpp"     // U128
 #include "sign.hpp"     // Sign
 #include "singular.hpp" // Singular
-#include "defines.h"
-
-#pragma once
 
 namespace bignum::i128
 {
@@ -66,7 +65,7 @@ namespace bignum::i128
         bool operator==(const I128 &other) const
         {
             const auto has_a_singularity = mSingular != other.mSingular;
-            return has_a_singularity ? false : *this <=> other == 0;
+            return has_a_singularity ? false : ((*this <=> other) == 0);
         }
 
         /**
@@ -86,14 +85,14 @@ namespace bignum::i128
             }
             else
             {
-                if (mSign())
+                // Знаки разные. Нули (+0 и -0) равны между собой, а во всех
+                // остальных случаях порядок однозначно определяется знаком.
+                if (is_zero() && other.is_zero())
                 {
-                    return mUnsigned != U128{0} ? -1 <=> 1 : 1 <=> 1;
+                    return std::partial_ordering::equivalent;
                 }
-                else
-                {
-                    return mUnsigned != U128{0} ? 1 <=> -1 : 1 <=> 1;
-                }
+                return mSign() ? std::partial_ordering::less
+                               : std::partial_ordering::greater;
             }
         }
 
@@ -176,7 +175,7 @@ namespace bignum::i128
         I128 operator>>(uint32_t shift) const
         {
             I128 result = *this;
-            result.mUnsigned <<= shift;
+            result.mUnsigned >>= shift;
             return result;
         }
 
@@ -463,7 +462,6 @@ namespace bignum::i128
                 return {result, 0};
             }
             const auto q = X.mUnsigned / Y;
-            const auto r = X.mUnsigned % Y;
             auto Q = I128{q, X.mSign};
             auto R = X - Q * Y;
             if (R.is_negative())
@@ -495,7 +493,6 @@ namespace bignum::i128
                 return {result, 0};
             }
             const auto q = X.mUnsigned / Y.mUnsigned;
-            const auto r = X.mUnsigned % Y.mUnsigned;
             auto Q = I128{q, X.mSign ^ Y.mSign};
             auto R = X - Q * Y;
             if (!R.is_zero() && (R.mSign ^ Y.mSign)())

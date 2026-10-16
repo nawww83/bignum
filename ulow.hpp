@@ -52,6 +52,13 @@ namespace low64
         constexpr ULOW& operator-=(const ULOW& rhs) noexcept { mValue -= rhs.mValue; return *this; }
         constexpr ULOW& operator*=(const ULOW& rhs) noexcept { mValue *= rhs.mValue; return *this; }
 
+        // --- Инкремент / декремент (требуются, например, если ULOW
+        //     используется в качестве "половинки" в UBig) ---
+        constexpr ULOW& operator++() noexcept { ++mValue; return *this; }
+        constexpr ULOW  operator++(int) noexcept { ULOW tmp{*this}; ++mValue; return tmp; }
+        constexpr ULOW& operator--() noexcept { --mValue; return *this; }
+        constexpr ULOW  operator--(int) noexcept { ULOW tmp{*this}; --mValue; return tmp; }
+
         // --- Деление и остаток ---
         [[nodiscard]] constexpr std::pair<ULOW, ULOW> operator/(const ULOW& rhs) const noexcept {
             return { ULOW{mValue / rhs.mValue}, ULOW{mValue % rhs.mValue} };
@@ -84,6 +91,20 @@ namespace low64
 
         [[nodiscard]] constexpr int mod10() const noexcept {
             return static_cast<int>(mValue % 10ull);
+        }
+
+        /**
+         * @brief Максимально возможное значение.
+         */
+        [[nodiscard]] static constexpr ULOW max() noexcept {
+            return ULOW{std::numeric_limits<uint64_t>::max()};
+        }
+
+        /**
+         * @brief Минимально возможное значение.
+         */
+        [[nodiscard]] static constexpr ULOW min() noexcept {
+            return ULOW{0};
         }
 
         static constexpr ULOW get_max_value() noexcept {
