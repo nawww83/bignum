@@ -13,6 +13,8 @@ namespace tests_i128
 
     void cmp_operator_test();
 
+    void shift_operator_test();
+
     void addition_test();
 
     void subtraction_test();

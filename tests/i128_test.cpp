@@ -136,6 +136,67 @@ namespace tests_i128
             I128 y{U128{0}};
             assert(x != y);
         }
+        // Регрессия: сравнение с нулём при разных знаках.
+        {
+            I128 zero{U128{0}};
+            I128 neg{U128{5}, Sign{true}}; // -5
+            assert(!(zero == neg));
+            assert(zero != neg);
+            assert(zero > neg);
+            assert(zero >= neg);
+            assert(!(zero < neg));
+            assert(!(zero <= neg));
+        }
+        {
+            I128 neg_zero{U128{0}, Sign{true}}; // -0
+            I128 pos{U128{5}};
+            assert(neg_zero < pos);
+            assert(neg_zero <= pos);
+            assert(!(neg_zero > pos));
+            assert(!(neg_zero >= pos));
+        }
+        {
+            // ±0 равны между собой.
+            I128 neg_zero{U128{0}, Sign{true}};
+            I128 pos_zero{U128{0}};
+            assert(neg_zero == pos_zero);
+        }
+    }
+
+    void shift_operator_test()
+    {
+        // Регрессия: operator>> раньше сдвигал влево.
+        {
+            I128 x{U128{16}};
+            assert((x >> 1) == I128{U128{8}});
+            assert((x >> 2) == I128{U128{4}});
+        }
+        {
+            I128 x{U128{1, 1}}; // 2^64 + 1
+            I128 y = x >> 1;    // 2^63
+            assert(y == I128{U128{1ull << 63}});
+        }
+        {
+            I128 x{U128{16}};
+            x >>= 3;
+            assert(x == I128{U128{2}});
+        }
+        {
+            // Сдвиг влево продолжает работать.
+            I128 x{U128{1}};
+            assert((x << 4) == I128{U128{16}});
+        }
+        {
+            // Знак при сдвиге сохраняется.
+            I128 x{U128{16}, Sign{true}};
+            const I128 expected{U128{4}, Sign{true}};
+            assert((x >> 2) == expected);
+        }
+        {
+            // Большой сдвиг даёт ноль.
+            I128 x{U128{7}};
+            assert((x >> 200) == I128{U128{0}});
+        }
     }
 
     void addition_test()

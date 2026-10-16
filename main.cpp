@@ -76,6 +76,8 @@ int main()
 
         cmp_operator_test();
 
+        shift_operator_test();
+
         addition_test();
 
         subtraction_test();

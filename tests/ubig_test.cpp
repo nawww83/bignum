@@ -59,6 +59,18 @@ namespace tests_ubig
             assert(x.toString() == "13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095");
             assert(x.bit_width() == 512);
         } 
+        {
+            // Регрессия: UBig<uint64_t> должен инстанцироваться
+            // (128-битное число из двух 64-битных половинок).
+            using U128b = UBig<uint64_t>;
+            const U128b x = U128b::max();
+            assert(x.toString() == "340282366920938463463374607431768211455");
+            assert(x.bit_width() == 128);
+            assert((U128b{3ull} * U128b{4ull}).toString() == "12");
+            auto [q, r] = U128b{100ull} / U128b{7ull};
+            assert(q.toString() == "14");
+            assert(r.toString() == "2");
+        }
     }
 
 void test_u256_division() 
