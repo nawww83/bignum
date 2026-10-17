@@ -1,0 +1,10 @@
+# Сборка
+/build/
+/matrix_crypto
+
+# Артефакты тестов и интеропа
+/interop/
+/selftest_public.json
+/selftest_private.json
+/public_key.json
+/private_key.json
