@@ -7,7 +7,7 @@
   * C++-конверт (encrypt-then-sign) расшифровывается Python-версией и наоборот;
   * ключи, сгенерированные C++, читаются Python-версией (Y == T^x).
 
-C++-бинарник: ~/bignum/matrix_crypto/matrix_crypto (WSL, Ubuntu-24.04).
+C++-бинарник: ~/bignum/matrix_crypto/build/matrix_crypto (WSL, Ubuntu-24.04).
 Запуск:  python cpp_interop_test.py
 """
 

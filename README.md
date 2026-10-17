@@ -65,8 +65,9 @@ cmake -S . -B build && cmake --build build -j
 * **C++-версия** (`matrix_crypto.hpp`, `cipher_tool.hpp`, `dh_secure.hpp`, `main.cpp`) —
   шифрование «encrypt-then-sign», подпись Шнорра и аутентифицированный
   Диффи-Хеллман;
-* **Python-референс** — та же схема, использованная для кросс-проверки совместимости
-  (одни и те же `p, q, T`, хэши SHA-512/256, base64/JSON-конверт и файлы ключей).
+* **Python-референс** (подкаталог [`matrix_crypto/python/`](matrix_crypto/python/)) — та же
+  схема, использованная для кросс-проверки совместимости (одни и те же `p, q, T`, хэши
+  SHA-512/256, base64/JSON-конверт и файлы ключей).
 
 ```bash
 cd matrix_crypto

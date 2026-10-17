@@ -4,7 +4,15 @@
 
 # Артефакты тестов и интеропа
 /interop/
-/selftest_public.json
-/selftest_private.json
 /public_key.json
 /private_key.json
+/selftest_public.json
+/selftest_private.json
+/python/public_key.json
+/python/private_key.json
+/python/selftest_public.json
+/python/selftest_private.json
+
+# Python
+__pycache__/
+*.py[cod]

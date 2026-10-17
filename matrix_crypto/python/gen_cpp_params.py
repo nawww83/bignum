@@ -1,7 +1,7 @@
 """
 Генератор C++-заголовка с параметрами системы (p, q, T) из matrix_params.py.
 
-Запуск из каталога проекта:
+Запуск (из подкаталога python/ или как `python python/gen_cpp_params.py`):
     python gen_cpp_params.py [путь_к_matrix_params.hpp]
 
 По умолчанию пишет в C++-порт:
